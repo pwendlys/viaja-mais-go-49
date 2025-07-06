@@ -109,6 +109,7 @@
 @layer utilities {
   .gradient-viaja {
     background: linear-gradient(135deg, hsl(214 100% 50%) 0%, hsl(142 69% 58%) 100%);
+    color: white !important;
   }
   
   .gradient-viaja-subtle {
@@ -129,14 +130,17 @@
   
   .bg-viaja-blue {
     background-color: hsl(214 100% 50%);
+    color: white !important;
   }
   
   .bg-viaja-green {
     background-color: hsl(142 69% 58%);
+    color: white !important;
   }
   
   .bg-viaja-orange {
     background-color: hsl(24 95% 53%);
+    color: white !important;
   }
   
   /* High contrast text utilities */
@@ -148,5 +152,34 @@
   .text-medium-contrast {
     color: hsl(215.4 16.3% 46.9%) !important;
     font-weight: 500;
+  }
+  
+  /* White text for blue backgrounds */
+  .gradient-viaja * {
+    color: white !important;
+  }
+  
+  .bg-viaja-blue * {
+    color: white !important;
+  }
+  
+  .bg-primary * {
+    color: white !important;
+  }
+  
+  /* Button with viaja gradient should have white text */
+  .gradient-viaja.text-white,
+  .gradient-viaja.text-white *,
+  button.gradient-viaja,
+  button.gradient-viaja * {
+    color: white !important;
+  }
+  
+  /* Primary button text should be white */
+  button[class*="bg-primary"],
+  button[class*="bg-primary"] *,
+  .bg-primary,
+  .bg-primary * {
+    color: white !important;
   }
 }

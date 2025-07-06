@@ -41,7 +41,7 @@ const UserHeader = ({ user }: UserHeaderProps) => {
           <div className="h-8 w-8 bg-viaja-blue rounded-full flex items-center justify-center">
             <User className="h-5 w-5 text-white" />
           </div>
-          <span className="hidden md:block text-sm font-medium">
+          <span className="hidden md:block text-sm font-medium text-gray-800">
             Olá, {user.name.split(' ')[0]}
           </span>
         </div>
