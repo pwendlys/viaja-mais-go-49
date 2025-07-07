@@ -2,7 +2,6 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useGoogleMaps } from './useGoogleMaps';
-import { useGoogleMapsApiKey } from './useGoogleMapsApiKey';
 
 interface RideCalculationParams {
   origin: { lat: number; lng: number };
@@ -20,19 +19,10 @@ interface RideEstimate {
 export const useRideCalculation = () => {
   const [isCalculating, setIsCalculating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { apiKey, isConfigured } = useGoogleMapsApiKey();
 
-  const { calculateRoute } = useGoogleMaps({
-    apiKey: apiKey || '',
-    libraries: ['places'],
-  });
+  const { calculateRoute } = useGoogleMaps();
 
   const calculateRideEstimate = async ({ origin, destination }: RideCalculationParams): Promise<RideEstimate | null> => {
-    if (!isConfigured || !apiKey) {
-      setError('Chave da API do Google Maps não configurada');
-      return null;
-    }
-
     setIsCalculating(true);
     setError(null);
 
@@ -64,9 +54,10 @@ export const useRideCalculation = () => {
       const pricePerKm = Number(pricingConfig.price_per_km);
       const pricePerMinute = Number(pricingConfig.price_per_minute);
       const surgeMultiplier = Number(pricingConfig.surge_multiplier);
+      const minimumFare = Number(pricingConfig.minimum_fare);
       
       const calculatedPrice = (baseFare + (distanceKm * pricePerKm) + (durationMinutes * pricePerMinute)) * surgeMultiplier;
-      const finalPrice = Math.max(calculatedPrice, Number(pricingConfig.minimum_fare));
+      const finalPrice = Math.max(calculatedPrice, minimumFare);
 
       return {
         distance: distanceKm,
@@ -89,6 +80,5 @@ export const useRideCalculation = () => {
     calculateRideEstimate,
     isCalculating,
     error,
-    isConfigured,
   };
 };

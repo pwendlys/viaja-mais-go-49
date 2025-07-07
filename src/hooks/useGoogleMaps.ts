@@ -1,8 +1,9 @@
 
 import { useEffect, useState } from 'react';
+import { GOOGLE_MAPS_API_KEY, GOOGLE_MAPS_LIBRARIES } from '@/config/googleMaps';
 
 interface GoogleMapsConfig {
-  apiKey: string;
+  apiKey?: string;
   libraries: string[];
 }
 
@@ -18,9 +19,12 @@ interface RouteInfo {
   durationValue: number;
 }
 
-export const useGoogleMaps = (config: GoogleMapsConfig) => {
+export const useGoogleMaps = (config?: GoogleMapsConfig) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  const apiKey = config?.apiKey || GOOGLE_MAPS_API_KEY;
+  const libraries = config?.libraries || GOOGLE_MAPS_LIBRARIES;
 
   useEffect(() => {
     // Verificar se já existe uma instância carregada
@@ -30,7 +34,7 @@ export const useGoogleMaps = (config: GoogleMapsConfig) => {
     }
 
     // Verificar se a chave é válida
-    if (!config.apiKey || config.apiKey === 'YOUR_API_KEY_HERE') {
+    if (!apiKey || apiKey === 'YOUR_GOOGLE_MAPS_API_KEY_HERE') {
       setLoadError('Chave da API do Google Maps não configurada');
       return;
     }
@@ -39,7 +43,7 @@ export const useGoogleMaps = (config: GoogleMapsConfig) => {
     setLoadError(null);
 
     const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${config.apiKey}&libraries=${config.libraries.join(',')}&callback=initGoogleMaps`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=${libraries.join(',')}&callback=initGoogleMaps`;
     script.async = true;
     script.defer = true;
     
@@ -64,7 +68,7 @@ export const useGoogleMaps = (config: GoogleMapsConfig) => {
         delete (window as any).initGoogleMaps;
       }
     };
-  }, [config.apiKey, config.libraries]);
+  }, [apiKey, libraries]);
 
   const calculateRoute = async (origin: Location, destination: Location): Promise<RouteInfo | null> => {
     if (!isLoaded || !window.google) {

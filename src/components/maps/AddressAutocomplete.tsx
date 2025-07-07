@@ -2,6 +2,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { useGoogleMaps } from '@/hooks/useGoogleMaps';
+import { AUTOCOMPLETE_CONFIG } from '@/config/googleMaps';
 
 interface AddressAutocompleteProps {
   value: string;
@@ -21,19 +22,15 @@ const AddressAutocomplete = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const [autocomplete, setAutocomplete] = useState<google.maps.places.Autocomplete | null>(null);
   
-  const { isLoaded } = useGoogleMaps({
-    apiKey: 'YOUR_API_KEY_HERE', // Será substituído pela chave real
-    libraries: ['places'],
-  });
+  const { isLoaded } = useGoogleMaps();
 
   useEffect(() => {
     if (!isLoaded || !inputRef.current || autocomplete || !window.google) return;
 
-    const autocompleteInstance = new window.google.maps.places.Autocomplete(inputRef.current, {
-      types: ['address'],
-      componentRestrictions: { country: 'BR' },
-      fields: ['formatted_address', 'geometry'],
-    });
+    const autocompleteInstance = new window.google.maps.places.Autocomplete(
+      inputRef.current, 
+      AUTOCOMPLETE_CONFIG
+    );
 
     autocompleteInstance.addListener('place_changed', () => {
       const place = autocompleteInstance.getPlace();

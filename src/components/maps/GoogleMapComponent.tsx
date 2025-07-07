@@ -1,9 +1,10 @@
 
 import React, { useRef, useEffect, useState } from 'react';
 import { useGoogleMaps } from '@/hooks/useGoogleMaps';
+import { DEFAULT_MAP_CONFIG } from '@/config/googleMaps';
 
 interface GoogleMapComponentProps {
-  center: { lat: number; lng: number };
+  center?: { lat: number; lng: number };
   zoom?: number;
   markers?: Array<{ lat: number; lng: number; title?: string; icon?: string }>;
   onMapClick?: (location: { lat: number; lng: number }) => void;
@@ -13,8 +14,8 @@ interface GoogleMapComponentProps {
 }
 
 const GoogleMapComponent = ({
-  center,
-  zoom = 15,
+  center = DEFAULT_MAP_CONFIG.center,
+  zoom = DEFAULT_MAP_CONFIG.zoom,
   markers = [],
   onMapClick,
   showDirections = false,
@@ -22,13 +23,10 @@ const GoogleMapComponent = ({
   destination,
 }: GoogleMapComponentProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
-  const [map, setMap] = useState<any>(null);
-  const [directionsRenderer, setDirectionsRenderer] = useState<any>(null);
+  const [map, setMap] = useState<google.maps.Map | null>(null);
+  const [directionsRenderer, setDirectionsRenderer] = useState<google.maps.DirectionsRenderer | null>(null);
   
-  const { isLoaded, loadError } = useGoogleMaps({
-    apiKey: 'YOUR_API_KEY_HERE', // Será substituído pela chave real
-    libraries: ['places', 'geometry'],
-  });
+  const { isLoaded, loadError } = useGoogleMaps();
 
   useEffect(() => {
     if (!isLoaded || !mapRef.current || map) return;
@@ -36,13 +34,7 @@ const GoogleMapComponent = ({
     const googleMap = new window.google.maps.Map(mapRef.current, {
       center,
       zoom,
-      styles: [
-        {
-          featureType: 'poi',
-          elementType: 'labels',
-          stylers: [{ visibility: 'off' }],
-        },
-      ],
+      styles: DEFAULT_MAP_CONFIG.styles,
     });
 
     if (onMapClick) {
@@ -62,9 +54,6 @@ const GoogleMapComponent = ({
   useEffect(() => {
     if (!map || !isLoaded) return;
 
-    // Limpar marcadores existentes
-    // (Em uma implementação real, você manteria uma referência aos marcadores)
-    
     // Adicionar novos marcadores
     markers.forEach((marker) => {
       new window.google.maps.Marker({
@@ -99,7 +88,7 @@ const GoogleMapComponent = ({
       origin,
       destination,
       travelMode: window.google.maps.TravelMode.DRIVING,
-    }, (result: any, status: string) => {
+    }, (result: google.maps.DirectionsResult | null, status: google.maps.DirectionsStatus) => {
       if (status === 'OK' && result && directionsRenderer) {
         directionsRenderer.setDirections(result);
       }
