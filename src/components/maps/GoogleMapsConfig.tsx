@@ -17,11 +17,17 @@ const GoogleMapsConfig = ({ onApiKeySet }: GoogleMapsConfigProps) => {
 
   useEffect(() => {
     // Carregar chave salva do localStorage
-    const saved = localStorage.getItem('google_maps_api_key');
-    if (saved) {
-      setSavedKey(saved);
-      onApiKeySet(saved);
+    let saved = localStorage.getItem('google_maps_api_key');
+    const defaultKey = 'AIzaSyC1RTNnAuPOxerNlXqZfIXPYFHdmRg3qow';
+    
+    // Se não há chave salva, usar a chave padrão
+    if (!saved || saved === 'YOUR_GOOGLE_MAPS_API_KEY_HERE') {
+      saved = defaultKey;
+      localStorage.setItem('google_maps_api_key', defaultKey);
     }
+    
+    setSavedKey(saved);
+    onApiKeySet(saved);
   }, [onApiKeySet]);
 
   const validateAndSaveKey = async () => {
@@ -54,7 +60,7 @@ const GoogleMapsConfig = ({ onApiKeySet }: GoogleMapsConfigProps) => {
     window.location.reload();
   };
 
-  if (savedKey) {
+  if (savedKey && savedKey !== 'YOUR_GOOGLE_MAPS_API_KEY_HERE') {
     return (
       <Alert className="mb-4 border-green-200 bg-green-50">
         <CheckCircle className="h-4 w-4 text-green-600" />

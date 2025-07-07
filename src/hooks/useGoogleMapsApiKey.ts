@@ -8,11 +8,17 @@ export const useGoogleMapsApiKey = () => {
 
   useEffect(() => {
     const checkForSavedKey = () => {
-      const savedKey = localStorage.getItem('google_maps_api_key');
-      if (savedKey && savedKey !== 'YOUR_GOOGLE_MAPS_API_KEY_HERE') {
-        setApiKey(savedKey);
-        setIsConfigured(true);
+      let savedKey = localStorage.getItem('google_maps_api_key');
+      const defaultKey = 'AIzaSyC1RTNnAuPOxerNlXqZfIXPYFHdmRg3qow';
+      
+      // Se não há chave salva, usar a chave padrão
+      if (!savedKey || savedKey === 'YOUR_GOOGLE_MAPS_API_KEY_HERE') {
+        savedKey = defaultKey;
+        localStorage.setItem('google_maps_api_key', defaultKey);
       }
+      
+      setApiKey(savedKey);
+      setIsConfigured(true);
       setIsLoading(false);
     };
 

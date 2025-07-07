@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { LogIn, UserPlus, MapPin } from 'lucide-react';
@@ -59,17 +60,11 @@ const Index = () => {
 
   // Welcome toast effect
   useEffect(() => {
-    if (!isLoading) {
+    if (!isLoading && isConfigured) {
       const timer = setTimeout(() => {
-        if (isConfigured) {
-          toast.success('Bem-vindo ao Viaja+! 🚗', {
-            description: 'Sua solução de mobilidade urbana rápida e confiável.'
-          });
-        } else {
-          toast.info('Configure sua chave da API do Google Maps', {
-            description: 'Adicione sua chave para ativar o mapa e a localização.'
-          });
-        }
+        toast.success('Bem-vindo ao Viaja+! 🚗', {
+          description: 'Sua solução de mobilidade urbana rápida e confiável.'
+        });
       }, 1000);
 
       return () => clearTimeout(timer);
@@ -78,10 +73,6 @@ const Index = () => {
 
   const handleApiKeyUpdate = (newKey: string) => {
     updateApiKey(newKey);
-    // Recarregar a página para aplicar a nova chave
-    setTimeout(() => {
-      window.location.reload();
-    }, 500);
   };
 
   const handleRequestRide = (vehicleType: string, pickup: string, destination: string) => {
@@ -121,8 +112,8 @@ const Index = () => {
 
     return (
       <div className="space-y-6">
-        {/* Google Maps API Configuration - sempre visível quando não configurada */}
-        <GoogleMapsConfig onApiKeySet={handleApiKeyUpdate} />
+        {/* Google Maps API Configuration - mostrar apenas se não configurada */}
+        {!isConfigured && <GoogleMapsConfig onApiKeySet={handleApiKeyUpdate} />}
 
         {/* Auth Buttons */}
         <div className="flex justify-center space-x-4 mb-6">

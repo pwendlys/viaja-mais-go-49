@@ -25,7 +25,8 @@ export const useGoogleMaps = (config?: GoogleMapsConfig) => {
 
   const getApiKey = () => {
     const savedKey = localStorage.getItem('google_maps_api_key');
-    return config?.apiKey || (savedKey && savedKey !== 'YOUR_GOOGLE_MAPS_API_KEY_HERE' ? savedKey : null);
+    const defaultKey = 'AIzaSyC1RTNnAuPOxerNlXqZfIXPYFHdmRg3qow';
+    return config?.apiKey || savedKey || defaultKey;
   };
 
   const libraries = config?.libraries || GOOGLE_MAPS_LIBRARIES;
@@ -40,13 +41,19 @@ export const useGoogleMaps = (config?: GoogleMapsConfig) => {
     const apiKey = getApiKey();
 
     // Verificar se a chave é válida
-    if (!apiKey) {
+    if (!apiKey || apiKey === 'YOUR_GOOGLE_MAPS_API_KEY_HERE') {
       setLoadError('Chave da API do Google Maps não configurada');
       return;
     }
 
     // Limpar erro anterior
     setLoadError(null);
+
+    // Verificar se já existe um script carregando
+    const existingScript = document.querySelector(`script[src*="maps.googleapis.com"]`);
+    if (existingScript) {
+      return;
+    }
 
     const script = document.createElement('script');
     script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=${libraries.join(',')}&callback=initGoogleMaps`;
@@ -66,15 +73,12 @@ export const useGoogleMaps = (config?: GoogleMapsConfig) => {
     document.head.appendChild(script);
 
     return () => {
-      const existingScript = document.querySelector(`script[src*="maps.googleapis.com"]`);
-      if (existingScript && existingScript.parentNode) {
-        existingScript.parentNode.removeChild(existingScript);
-      }
+      // Não remover o script para evitar recarregamentos
       if ((window as any).initGoogleMaps) {
         delete (window as any).initGoogleMaps;
       }
     };
-  }, [libraries]);
+  }, []);
 
   const calculateRoute = async (origin: Location, destination: Location): Promise<RouteInfo | null> => {
     if (!isLoaded || !window.google) {
