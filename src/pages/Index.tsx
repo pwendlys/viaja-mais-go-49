@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { LogIn, UserPlus, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Header from '@/components/Header';
-import MapView from '@/components/MapView';
+import GoogleMapComponent from '@/components/maps/GoogleMapComponent';
 import RideRequest from '@/components/RideRequest';
 import RideStatus from '@/components/RideStatus';
 import UserProfile from '@/components/UserProfile';
@@ -133,9 +132,17 @@ const Index = () => {
 
         {/* Map View - only show if API is configured */}
         {isConfigured ? (
-          <MapView 
-            drivers={mockDrivers}
-            userLocation={{ lat: -23.5505, lng: -46.6333 }}
+          <GoogleMapComponent
+            center={{ lat: -23.5505, lng: -46.6333 }}
+            zoom={15}
+            markers={mockDrivers.map(driver => ({
+              lat: driver.lat,
+              lng: driver.lng,
+              title: `${driver.name} - ⭐ ${driver.rating}`,
+              icon: undefined
+            }))}
+            showDirections={rideState !== 'idle'}
+            origin={rideState !== 'idle' ? { lat: -23.5505, lng: -46.6333 } : undefined}
             destination={rideState !== 'idle' ? { lat: -23.5525, lng: -46.6353 } : undefined}
           />
         ) : (
