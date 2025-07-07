@@ -1,6 +1,6 @@
 
 import React from 'react';
-import GoogleMapComponent from '@/components/maps/GoogleMapComponent';
+import MapboxComponent from '@/components/maps/MapboxComponent';
 
 interface Driver {
   id: string;
@@ -19,7 +19,7 @@ interface MapViewProps {
 
 const MapView = ({ drivers, userLocation, destination }: MapViewProps) => {
   return (
-    <GoogleMapComponent
+    <MapboxComponent
       drivers={drivers}
       origin={userLocation}
       destination={destination}

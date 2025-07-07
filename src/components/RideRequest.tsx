@@ -4,9 +4,8 @@ import { MapPin, Clock, CreditCard, Star, Navigation } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import EnhancedAddressAutocomplete from '@/components/maps/EnhancedAddressAutocomplete';
-import GoogleMapComponent from '@/components/maps/GoogleMapComponent';
-import { useGoogleMaps } from '@/hooks/useGoogleMaps';
+import MapboxAddressAutocomplete from '@/components/maps/MapboxAddressAutocomplete';
+import MapboxComponent from '@/components/maps/MapboxComponent';
 import { toast } from 'sonner';
 
 interface VehicleOption {
@@ -30,34 +29,56 @@ const RideRequest = ({ onRequestRide }: RideRequestProps) => {
   const [routeInfo, setRouteInfo] = useState<any>(null);
   const [pickupCoords, setPickupCoords] = useState<{lat: number, lng: number} | null>(null);
   const [destinationCoords, setDestinationCoords] = useState<{lat: number, lng: number} | null>(null);
-  
-  const { getDirections, calculateFare, loading } = useGoogleMaps();
+  const [loading, setLoading] = useState(false);
+
+  const mapboxToken = localStorage.getItem('mapbox_token');
 
   // Calculate route when both coordinates are available
   useEffect(() => {
     const calculateRoute = async () => {
-      if (pickupCoords && destinationCoords && pickup && destination) {
+      if (pickupCoords && destinationCoords && mapboxToken) {
+        setLoading(true);
         try {
-          const directions = await getDirections(pickup, destination);
-          if (directions?.summary) {
-            setRouteInfo(directions.summary);
-            
-            const distanceKm = directions.summary.distance.value / 1000;
-            const durationMinutes = directions.summary.duration.value / 60;
-            
-            toast.success(`Rota calculada: ${directions.summary.distance.text} • ${directions.summary.duration.text}`);
+          const response = await fetch(
+            `https://api.mapbox.com/directions/v5/mapbox/driving/${pickupCoords.lng},${pickupCoords.lat};${destinationCoords.lng},${destinationCoords.lat}?geometries=geojson&access_token=${mapboxToken}`
+          );
+          const data = await response.json();
+          
+          if (data.routes && data.routes[0]) {
+            const route = data.routes[0];
+            const routeData = {
+              distance: {
+                text: `${(route.distance / 1000).toFixed(1)} km`,
+                value: route.distance
+              },
+              duration: {
+                text: `${Math.round(route.duration / 60)} min`,
+                value: route.duration
+              }
+            };
+            setRouteInfo(routeData);
+            toast.success(`Rota calculada: ${routeData.distance.text} • ${routeData.duration.text}`);
           }
         } catch (error) {
           console.error('Route calculation error:', error);
           setRouteInfo(null);
         }
+        setLoading(false);
       } else {
         setRouteInfo(null);
       }
     };
 
     calculateRoute();
-  }, [pickupCoords, destinationCoords, pickup, destination, getDirections]);
+  }, [pickupCoords, destinationCoords, mapboxToken]);
+
+  const calculateFare = (distanceKm: number, durationMinutes: number): number => {
+    const baseFare = 5.00;
+    const perKmRate = 2.50;
+    const perMinuteRate = 0.30;
+    
+    return baseFare + (distanceKm * perKmRate) + (durationMinutes * perMinuteRate);
+  };
 
   const vehicleOptions: VehicleOption[] = [
     {
@@ -111,8 +132,8 @@ const RideRequest = ({ onRequestRide }: RideRequestProps) => {
 
   return (
     <div className="space-y-6">
-      {/* Mapa do Google Maps com detalhes completos */}
-      <GoogleMapComponent 
+      {/* Mapa do Mapbox com detalhes completos */}
+      <MapboxComponent 
         className="w-full h-96"
         origin={pickupCoords ? { ...pickupCoords, address: pickup } : undefined}
         destination={destinationCoords ? { ...destinationCoords, address: destination } : undefined}
@@ -132,7 +153,7 @@ const RideRequest = ({ onRequestRide }: RideRequestProps) => {
           <div className="space-y-3">
             <div className="flex items-center space-x-3">
               <div className="w-3 h-3 bg-viaja-blue rounded-full"></div>
-              <EnhancedAddressAutocomplete
+              <MapboxAddressAutocomplete
                 value={pickup}
                 onChange={setPickup}
                 placeholder="Ponto de partida"
@@ -144,7 +165,7 @@ const RideRequest = ({ onRequestRide }: RideRequestProps) => {
             
             <div className="flex items-center space-x-3">
               <MapPin className="w-3 h-3 text-viaja-orange" />
-              <EnhancedAddressAutocomplete
+              <MapboxAddressAutocomplete
                 value={destination}
                 onChange={setDestination}
                 placeholder="Para onde você vai?"

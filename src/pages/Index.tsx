@@ -28,8 +28,8 @@ const Index = () => {
   // Welcome toast effect
   useEffect(() => {
     const timer = setTimeout(() => {
-      toast.success('Bem-vindo ao Viaja+! 🚗', {
-        description: 'Sua solução de mobilidade urbana com Google Maps integrado.'
+      toast.success('Bem-vindo ao Viaja+! 🗺️', {
+        description: 'Sua solução de mobilidade urbana com Mapbox integrado.'
       });
     }, 1000);
 
@@ -86,7 +86,7 @@ const Index = () => {
           </Link>
         </div>
 
-        {/* Ride Interface with Integrated Google Maps */}
+        {/* Ride Interface com Mapbox Integrado */}
         <div className="flex justify-center">
           {rideState === 'idle' ? (
             <RideRequest onRequestRide={handleRequestRide} />
@@ -119,10 +119,10 @@ const Index = () => {
         {/* System Status */}
         <div className="bg-gradient-viaja-subtle border border-viaja-blue/20 rounded-lg p-4 text-center">
           <div className="text-sm font-medium text-viaja-blue mb-2">
-            🗺️ Google Maps Integrado
+            🗺️ Mapbox Integrado com Visão 3D
           </div>
           <div className="text-xs text-gray-600">
-            Sistema configurado com geolocalização, rotas e autocompletar de endereços
+            Sistema atualizado com mapas Mapbox, construções 3D, geolocalização e rotas otimizadas
           </div>
         </div>
       </div>
