@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { LogIn, UserPlus } from 'lucide-react';
+import { LogIn, UserPlus, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Header from '@/components/Header';
 import MapView from '@/components/MapView';
@@ -18,7 +18,7 @@ type RideState = 'idle' | 'searching' | 'driver-assigned' | 'driver-arriving' | 
 const Index = () => {
   const [currentView, setCurrentView] = useState<AppView>('map');
   const [rideState, setRideState] = useState<RideState>('idle');
-  const { apiKey, isConfigured, updateApiKey } = useGoogleMapsApiKey();
+  const { apiKey, isConfigured, isLoading, updateApiKey } = useGoogleMapsApiKey();
   
   // Mock data
   const userData = {
@@ -60,18 +60,28 @@ const Index = () => {
 
   // Welcome toast effect
   useEffect(() => {
-    const timer = setTimeout(() => {
-      toast.success('Bem-vindo ao Viaja+! 🚗', {
-        description: 'Sua solução de mobilidade urbana rápida e confiável.'
-      });
-    }, 1000);
+    if (!isLoading) {
+      const timer = setTimeout(() => {
+        if (isConfigured) {
+          toast.success('Bem-vindo ao Viaja+! 🚗', {
+            description: 'Sua solução de mobilidade urbana rápida e confiável.'
+          });
+        } else {
+          toast.info('Configure sua chave da API do Google Maps', {
+            description: 'Adicione sua chave para ativar o mapa e a localização.'
+          });
+        }
+      }, 1000);
 
-    return () => clearTimeout(timer);
-  }, []);
+      return () => clearTimeout(timer);
+    }
+  }, [isConfigured, isLoading]);
 
   const handleRequestRide = (vehicleType: string, pickup: string, destination: string) => {
     if (!isConfigured) {
-      toast.error('Configure sua chave da API do Google Maps primeiro');
+      toast.error('Configure sua chave da API do Google Maps primeiro', {
+        description: 'É necessário configurar a API do Google Maps para solicitar corridas'
+      });
       return;
     }
     
@@ -104,10 +114,8 @@ const Index = () => {
 
     return (
       <div className="space-y-6">
-        {/* Google Maps API Configuration */}
-        {!isConfigured && (
-          <GoogleMapsConfig onApiKeySet={updateApiKey} />
-        )}
+        {/* Google Maps API Configuration - sempre visível quando não configurada */}
+        <GoogleMapsConfig onApiKeySet={updateApiKey} />
 
         {/* Auth Buttons */}
         <div className="flex justify-center space-x-4 mb-6">
@@ -126,38 +134,48 @@ const Index = () => {
         </div>
 
         {/* Map View - only show if API is configured */}
-        {isConfigured && (
+        {isConfigured ? (
           <MapView 
             drivers={mockDrivers}
             userLocation={{ lat: -23.5505, lng: -46.6333 }}
             destination={rideState !== 'idle' ? { lat: -23.5525, lng: -46.6353 } : undefined}
           />
-        )}
-
-        {/* Ride Interface */}
-        {isConfigured && (
-          <div className="flex justify-center">
-            {rideState === 'idle' ? (
-              <RideRequest onRequestRide={handleRequestRide} />
-            ) : (
-              <RideStatus
-                status={rideState}
-                driver={rideState !== 'searching' ? {
-                  name: currentDriver.name,
-                  rating: currentDriver.rating,
-                  vehicle: 'Honda Civic Branco',
-                  plate: 'ABC-1234',
-                  eta: currentDriver.eta
-                } : undefined}
-                onCancel={handleCancelRide}
-                onRate={handleRateRide}
-              />
-            )}
+        ) : (
+          <div className="w-full h-96 bg-gradient-to-br from-blue-50 to-green-50 rounded-lg flex items-center justify-center border-2 border-dashed border-blue-200">
+            <div className="text-center p-8">
+              <MapPin className="h-16 w-16 text-blue-400 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-gray-700 mb-2">
+                Mapa será exibido aqui
+              </h3>
+              <p className="text-gray-500">
+                Configure sua chave da API do Google Maps acima para ver o mapa interativo
+              </p>
+            </div>
           </div>
         )}
 
+        {/* Ride Interface */}
+        <div className="flex justify-center">
+          {rideState === 'idle' ? (
+            <RideRequest onRequestRide={handleRequestRide} />
+          ) : (
+            <RideStatus
+              status={rideState}
+              driver={rideState !== 'searching' ? {
+                name: currentDriver.name,
+                rating: currentDriver.rating,
+                vehicle: 'Honda Civic Branco',
+                plate: 'ABC-1234',
+                eta: currentDriver.eta
+              } : undefined}
+              onCancel={handleCancelRide}
+              onRate={handleRateRide}
+            />
+          )}
+        </div>
+
         {/* Safety Banner */}
-        {rideState === 'idle' && isConfigured && (
+        {rideState === 'idle' && (
           <div className="bg-gradient-viaja-subtle border border-viaja-blue/20 rounded-lg p-4 text-center">
             <div className="text-sm font-medium text-viaja-blue mb-2">
               🛡️ Sua segurança é nossa prioridade
@@ -170,6 +188,17 @@ const Index = () => {
       </div>
     );
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-viaja-blue mx-auto mb-4"></div>
+          <p className="text-gray-600">Carregando Viaja+...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
