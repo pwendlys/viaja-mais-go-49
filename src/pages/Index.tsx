@@ -3,10 +3,9 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { LogIn, UserPlus, Car, Menu, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import RideRequest from '@/components/RideRequest';
 import RideStatus from '@/components/RideStatus';
 import UserProfile from '@/components/UserProfile';
-import SecureMapboxComponent from '@/components/maps/SecureMapboxComponent';
+import InteractiveRideMap from '@/components/maps/InteractiveRideMap';
 import { toast } from 'sonner';
 
 type AppView = 'map' | 'profile';
@@ -30,17 +29,17 @@ const Index = () => {
   useEffect(() => {
     const timer = setTimeout(() => {
       toast.success('Bem-vindo ao Viaja+ 3D! 🌟', {
-        description: 'Experiência de mobilidade urbana com mapas 3D avançados.'
+        description: 'Clique no mapa para definir sua origem e destino.'
       });
     }, 1000);
 
     return () => clearTimeout(timer);
   }, []);
 
-  const handleRequestRide = (vehicleType: string, pickup: string, destination: string) => {
+  const handleRequestRide = (origin: any, destination: any, vehicleType: string) => {
     setRideState('searching');
     toast.info('🔍 Procurando motoristas na região...', {
-      description: 'Aguarde enquanto localizamos o motorista mais próximo.'
+      description: `Rota: ${origin.address} → ${destination.address}`
     });
     
     // Simulate searching - in real app, this would connect to database
@@ -145,13 +144,13 @@ const Index = () => {
 
             <div className="mt-8 p-4 bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-xl">
               <div className="text-sm font-medium text-blue-800 mb-2 flex items-center">
-                🌟 Mapa 3D Avançado
+                🗺️ Mapa Interativo
               </div>
               <div className="text-xs text-blue-600 space-y-1">
-                <p>✓ Visualização em perspectiva 3D</p>
-                <p>✓ Prédios extrudados em tempo real</p>
-                <p>✓ Camada de tráfego integrada</p>
-                <p>✓ Rotas animadas e interativas</p>
+                <p>✓ Clique para definir origem e destino</p>
+                <p>✓ Cálculo automático de preço</p>
+                <p>✓ Visualização de rota em tempo real</p>
+                <p>✓ Múltiplas opções de veículos</p>
               </div>
             </div>
           </div>
@@ -166,32 +165,38 @@ const Index = () => {
         />
       )}
 
-      {/* Mapa 3D em tela cheia */}
+      {/* Mapa interativo em tela cheia */}
       <div className="absolute inset-0">
-        <SecureMapboxComponent 
-          className="w-full h-full"
-          center={{ lat: -21.7554, lng: -43.3636 }}
-          zoom={15}
-        />
+        {rideState === 'idle' ? (
+          <InteractiveRideMap 
+            className="w-full h-full"
+            onRideRequest={handleRequestRide}
+          />
+        ) : (
+          <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+            <div className="text-center">
+              <div className="text-4xl mb-4">🔍</div>
+              <div className="text-lg font-medium">Processando solicitação...</div>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Controles de corrida aprimorados */}
-      <div className="absolute bottom-0 left-0 right-0 z-10">
-        <div className="bg-white/95 backdrop-blur-xl rounded-t-3xl shadow-2xl border-t border-white/20">
-          <div className="p-6">
-            {rideState === 'idle' ? (
-              <RideRequest onRequestRide={handleRequestRide} />
-            ) : (
+      {/* Status da corrida quando ativa */}
+      {rideState !== 'idle' && (
+        <div className="absolute bottom-0 left-0 right-0 z-10">
+          <div className="bg-white/95 backdrop-blur-xl rounded-t-3xl shadow-2xl border-t border-white/20">
+            <div className="p-6">
               <RideStatus
                 status={rideState}
                 driver={undefined}
                 onCancel={handleCancelRide}
                 onRate={handleRateRide}
               />
-            )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Status do sistema - card flutuante aprimorado */}
       <div className="absolute top-20 right-4 z-15">
@@ -201,8 +206,8 @@ const Index = () => {
               <Car className="h-5 w-5 text-white" />
             </div>
             <div className="flex-1">
-              <div className="font-medium text-gray-800 text-sm">Sistema 3D Ativo</div>
-              <div className="text-gray-600 text-xs">Nenhum motorista online</div>
+              <div className="font-medium text-gray-800 text-sm">Sistema Interativo</div>
+              <div className="text-gray-600 text-xs">Clique no mapa para começar</div>
               <div className="flex items-center mt-1">
                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-2"></div>
                 <span className="text-xs text-gray-500">Mapa carregado</span>
