@@ -9,7 +9,171 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      corridas: {
+        Row: {
+          data_atualizacao: string
+          data_criacao: string
+          destino_endereco: string | null
+          destino_latitude: number
+          destino_longitude: number
+          distancia: number | null
+          id: string
+          id_motorista: string | null
+          id_usuario: string
+          origem_endereco: string | null
+          origem_latitude: number
+          origem_longitude: number
+          status: Database["public"]["Enums"]["ride_status"]
+          tempo_estimado: number | null
+          valor: number | null
+        }
+        Insert: {
+          data_atualizacao?: string
+          data_criacao?: string
+          destino_endereco?: string | null
+          destino_latitude: number
+          destino_longitude: number
+          distancia?: number | null
+          id?: string
+          id_motorista?: string | null
+          id_usuario: string
+          origem_endereco?: string | null
+          origem_latitude: number
+          origem_longitude: number
+          status?: Database["public"]["Enums"]["ride_status"]
+          tempo_estimado?: number | null
+          valor?: number | null
+        }
+        Update: {
+          data_atualizacao?: string
+          data_criacao?: string
+          destino_endereco?: string | null
+          destino_latitude?: number
+          destino_longitude?: number
+          distancia?: number | null
+          id?: string
+          id_motorista?: string | null
+          id_usuario?: string
+          origem_endereco?: string | null
+          origem_latitude?: number
+          origem_longitude?: number
+          status?: Database["public"]["Enums"]["ride_status"]
+          tempo_estimado?: number | null
+          valor?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "corridas_id_motorista_fkey"
+            columns: ["id_motorista"]
+            isOneToOne: false
+            referencedRelation: "motoristas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "corridas_id_usuario_fkey"
+            columns: ["id_usuario"]
+            isOneToOne: false
+            referencedRelation: "usuarios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      motoristas: {
+        Row: {
+          data_criacao: string
+          documentos: Json | null
+          email: string
+          id: string
+          latitude: number | null
+          longitude: number | null
+          nome: string
+          senha: string
+          status: Database["public"]["Enums"]["driver_status"]
+          telefone: string | null
+        }
+        Insert: {
+          data_criacao?: string
+          documentos?: Json | null
+          email: string
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          nome: string
+          senha: string
+          status?: Database["public"]["Enums"]["driver_status"]
+          telefone?: string | null
+        }
+        Update: {
+          data_criacao?: string
+          documentos?: Json | null
+          email?: string
+          id?: string
+          latitude?: number | null
+          longitude?: number | null
+          nome?: string
+          senha?: string
+          status?: Database["public"]["Enums"]["driver_status"]
+          telefone?: string | null
+        }
+        Relationships: []
+      }
+      taxas: {
+        Row: {
+          data_atualizacao: string
+          id: string
+          preco_por_km: number
+          preco_por_minuto: number
+          taxa_base: number
+          taxa_dinamica: number
+        }
+        Insert: {
+          data_atualizacao?: string
+          id?: string
+          preco_por_km?: number
+          preco_por_minuto?: number
+          taxa_base?: number
+          taxa_dinamica?: number
+        }
+        Update: {
+          data_atualizacao?: string
+          id?: string
+          preco_por_km?: number
+          preco_por_minuto?: number
+          taxa_base?: number
+          taxa_dinamica?: number
+        }
+        Relationships: []
+      }
+      usuarios: {
+        Row: {
+          data_criacao: string
+          email: string
+          endereco: string | null
+          id: string
+          nome: string
+          senha: string
+          telefone: string | null
+        }
+        Insert: {
+          data_criacao?: string
+          email: string
+          endereco?: string | null
+          id?: string
+          nome: string
+          senha: string
+          telefone?: string | null
+        }
+        Update: {
+          data_criacao?: string
+          email?: string
+          endereco?: string | null
+          id?: string
+          nome?: string
+          senha?: string
+          telefone?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -18,7 +182,8 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      driver_status: "ativo" | "inativo"
+      ride_status: "pendente" | "em_andamento" | "concluido" | "cancelado"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -133,6 +298,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      driver_status: ["ativo", "inativo"],
+      ride_status: ["pendente", "em_andamento", "concluido", "cancelado"],
+    },
   },
 } as const
