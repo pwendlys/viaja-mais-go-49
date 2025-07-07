@@ -22,8 +22,8 @@ const GoogleMapComponent = ({
   destination,
 }: GoogleMapComponentProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
-  const [map, setMap] = useState<google.maps.Map | null>(null);
-  const [directionsRenderer, setDirectionsRenderer] = useState<google.maps.DirectionsRenderer | null>(null);
+  const [map, setMap] = useState<any>(null);
+  const [directionsRenderer, setDirectionsRenderer] = useState<any>(null);
   
   const { isLoaded, loadError } = useGoogleMaps({
     apiKey: 'YOUR_API_KEY_HERE', // Será substituído pela chave real
@@ -46,7 +46,7 @@ const GoogleMapComponent = ({
     });
 
     if (onMapClick) {
-      googleMap.addListener('click', (event: google.maps.MapMouseEvent) => {
+      googleMap.addListener('click', (event: any) => {
         if (event.latLng) {
           onMapClick({
             lat: event.latLng.lat(),
@@ -99,7 +99,7 @@ const GoogleMapComponent = ({
       origin,
       destination,
       travelMode: window.google.maps.TravelMode.DRIVING,
-    }, (result, status) => {
+    }, (result: any, status: string) => {
       if (status === 'OK' && result && directionsRenderer) {
         directionsRenderer.setDirections(result);
       }

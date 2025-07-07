@@ -37,32 +37,34 @@ export const useRideCalculation = () => {
         throw new Error('Não foi possível calcular a rota');
       }
 
-      // Buscar taxas do banco de dados
-      const { data: taxas, error: taxasError } = await supabase
-        .from('taxas')
+      // Buscar configuração de preços do banco de dados
+      const { data: pricingConfig, error: pricingError } = await supabase
+        .from('pricing_config')
         .select('*')
+        .eq('is_active', true)
         .limit(1)
         .single();
 
-      if (taxasError) {
-        throw new Error('Erro ao buscar taxas: ' + taxasError.message);
+      if (pricingError) {
+        throw new Error('Erro ao buscar configuração de preços: ' + pricingError.message);
       }
 
       // Calcular preço
       const distanceKm = routeInfo.distanceValue / 1000;
       const durationMinutes = routeInfo.durationValue / 60;
       
-      const basePrice = Number(taxas.taxa_base);
-      const pricePerKm = Number(taxas.preco_por_km);
-      const pricePerMinute = Number(taxas.preco_por_minuto);
-      const dynamicRate = Number(taxas.taxa_dinamica);
+      const baseFare = Number(pricingConfig.base_fare);
+      const pricePerKm = Number(pricingConfig.price_per_km);
+      const pricePerMinute = Number(pricingConfig.price_per_minute);
+      const surgeMultiplier = Number(pricingConfig.surge_multiplier);
       
-      const totalPrice = (basePrice + (distanceKm * pricePerKm) + (durationMinutes * pricePerMinute)) * dynamicRate;
+      const calculatedPrice = (baseFare + (distanceKm * pricePerKm) + (durationMinutes * pricePerMinute)) * surgeMultiplier;
+      const finalPrice = Math.max(calculatedPrice, Number(pricingConfig.minimum_fare));
 
       return {
         distance: distanceKm,
         duration: durationMinutes,
-        price: Math.round(totalPrice * 100) / 100,
+        price: Math.round(finalPrice * 100) / 100,
         distanceText: routeInfo.distance,
         durationText: routeInfo.duration,
       };

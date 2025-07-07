@@ -57,12 +57,12 @@ export const useGoogleMaps = (config: GoogleMapsConfig) => {
     try {
       const directionsService = new window.google.maps.DirectionsService();
       
-      const result = await new Promise<google.maps.DirectionsResult>((resolve, reject) => {
+      const result = await new Promise<any>((resolve, reject) => {
         directionsService.route({
           origin: { lat: origin.lat, lng: origin.lng },
           destination: { lat: destination.lat, lng: destination.lng },
           travelMode: window.google.maps.TravelMode.DRIVING,
-        }, (result, status) => {
+        }, (result: any, status: string) => {
           if (status === 'OK' && result) {
             resolve(result);
           } else {
@@ -92,8 +92,8 @@ export const useGoogleMaps = (config: GoogleMapsConfig) => {
     try {
       const geocoder = new window.google.maps.Geocoder();
       
-      const result = await new Promise<google.maps.GeocoderResult[]>((resolve, reject) => {
-        geocoder.geocode({ address }, (results, status) => {
+      const result = await new Promise<any[]>((resolve, reject) => {
+        geocoder.geocode({ address }, (results: any[], status: string) => {
           if (status === 'OK' && results) {
             resolve(results);
           } else {
