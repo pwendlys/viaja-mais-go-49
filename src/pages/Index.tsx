@@ -16,49 +16,14 @@ const Index = () => {
   const [currentView, setCurrentView] = useState<AppView>('map');
   const [rideState, setRideState] = useState<RideState>('idle');
   
-  // Mock data
+  // User data - will come from database
   const userData = {
-    name: 'Maria Silva',
-    email: 'maria.silva@email.com',
-    rating: 4.8,
-    totalTrips: 47,
-    memberSince: '2023'
+    name: 'Usuário',
+    email: 'usuario@email.com',
+    rating: 0,
+    totalTrips: 0,
+    memberSince: '2024'
   };
-
-  const mockDrivers = [
-    {
-      id: '1',
-      lat: -23.5505,
-      lng: -46.6333,
-      name: 'João Santos',
-      rating: 4.9,
-      eta: '3 min',
-      vehicle: 'Honda Civic Branco',
-      plate: 'ABC-1234'
-    },
-    {
-      id: '2',
-      lat: -23.5515,
-      lng: -46.6343,
-      name: 'Ana Costa',
-      rating: 4.7,
-      eta: '5 min',
-      vehicle: 'Toyota Corolla Prata',
-      plate: 'DEF-5678'
-    },
-    {
-      id: '3',
-      lat: -23.5495,
-      lng: -46.6323,
-      name: 'Carlos Lima',
-      rating: 4.8,
-      eta: '7 min',
-      vehicle: 'Hyundai HB20 Azul',
-      plate: 'GHI-9012'
-    }
-  ];
-
-  const [currentDriver, setCurrentDriver] = useState(mockDrivers[0]);
 
   // Welcome toast effect
   useEffect(() => {
@@ -73,17 +38,18 @@ const Index = () => {
 
   const handleRequestRide = (vehicleType: string, pickup: string, destination: string) => {
     setRideState('searching');
+    toast.info('Procurando motoristas disponíveis...');
     
-    // Simulate finding a driver
+    // Simulate searching - in real app, this would connect to database
     setTimeout(() => {
-      setRideState('driver-assigned');
-      toast.success(`Motorista encontrado! ${currentDriver.name} está a caminho.`);
-    }, 2000);
+      toast.info('Nenhum motorista disponível no momento. Cadastre motoristas no sistema.');
+      setRideState('idle');
+    }, 3000);
   };
 
   const handleCancelRide = () => {
     setRideState('idle');
-    toast.info('Corrida cancelada');
+    toast.info('Busca cancelada');
   };
 
   const handleRateRide = (rating: number) => {
@@ -120,47 +86,25 @@ const Index = () => {
           </Link>
         </div>
 
-        {/* Demo Map View */}
-        <div className="w-full h-96 bg-gradient-to-br from-blue-50 to-green-50 rounded-lg border-2 border-blue-200 p-6">
-          <div className="h-full flex flex-col">
-            <div className="text-center mb-4">
-              <MapPin className="h-8 w-8 text-blue-500 mx-auto mb-2" />
-              <h3 className="text-lg font-semibold text-gray-700">
-                Mapa Interativo - São Paulo, SP
-              </h3>
-              <p className="text-sm text-gray-500">
-                Visualização dos motoristas próximos
+        {/* Map Placeholder - Ready for Integration */}
+        <div className="w-full h-96 bg-gradient-to-br from-blue-50 to-green-50 rounded-lg border-2 border-dashed border-blue-300 p-6">
+          <div className="h-full flex flex-col items-center justify-center text-center">
+            <MapPin className="h-12 w-12 text-blue-500 mb-4" />
+            <h3 className="text-xl font-semibold text-gray-700 mb-2">
+              Mapa de Corridas
+            </h3>
+            <p className="text-gray-500 mb-4">
+              Espaço reservado para visualização das corridas em tempo real
+            </p>
+            <div className="bg-white rounded-lg p-4 shadow-sm border">
+              <p className="text-sm text-gray-600">
+                🗺️ Aqui será exibido o mapa interativo com:
               </p>
-            </div>
-            
-            {/* Drivers List */}
-            <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
-              {mockDrivers.map((driver) => (
-                <div 
-                  key={driver.id} 
-                  className="bg-white rounded-lg p-4 shadow-sm border hover:shadow-md transition-shadow"
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className="bg-blue-100 p-2 rounded-full">
-                      <Car className="h-4 w-4 text-blue-600" />
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="font-medium text-gray-800">{driver.name}</h4>
-                      <p className="text-sm text-gray-500">{driver.vehicle}</p>
-                    </div>
-                  </div>
-                  <div className="mt-3 flex justify-between items-center text-sm">
-                    <div className="flex items-center space-x-1">
-                      <Star className="h-3 w-3 text-yellow-400 fill-current" />
-                      <span className="text-gray-600">{driver.rating}</span>
-                    </div>
-                    <div className="flex items-center space-x-1 text-green-600">
-                      <Clock className="h-3 w-3" />
-                      <span>{driver.eta}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
+              <ul className="text-sm text-gray-500 mt-2 space-y-1">
+                <li>• Localização dos motoristas</li>
+                <li>• Rotas das corridas ativas</li>
+                <li>• Pontos de origem e destino</li>
+              </ul>
             </div>
           </div>
         </div>
@@ -172,38 +116,36 @@ const Index = () => {
           ) : (
             <RideStatus
               status={rideState}
-              driver={rideState !== 'searching' ? {
-                name: currentDriver.name,
-                rating: currentDriver.rating,
-                vehicle: currentDriver.vehicle,
-                plate: currentDriver.plate,
-                eta: currentDriver.eta
-              } : undefined}
+              driver={undefined}
               onCancel={handleCancelRide}
               onRate={handleRateRide}
             />
           )}
         </div>
 
-        {/* Safety Banner */}
-        {rideState === 'idle' && (
-          <div className="bg-gradient-viaja-subtle border border-viaja-blue/20 rounded-lg p-4 text-center">
-            <div className="text-sm font-medium text-viaja-blue mb-2">
-              🛡️ Sua segurança é nossa prioridade
-            </div>
-            <div className="text-xs text-gray-600">
-              Todos os motoristas são verificados • Compartilhe sua viagem • Botão de emergência sempre disponível
-            </div>
-          </div>
-        )}
+        {/* Empty State for Drivers */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
+          <Car className="h-8 w-8 text-blue-500 mx-auto mb-3" />
+          <h3 className="text-lg font-semibold text-blue-900 mb-2">
+            Nenhum Motorista Cadastrado
+          </h3>
+          <p className="text-blue-700 text-sm mb-4">
+            Para começar a usar o sistema, cadastre motoristas através do painel administrativo.
+          </p>
+          <Link to="/admin/drivers">
+            <Button variant="outline" className="text-blue-700 border-blue-300 hover:bg-blue-100">
+              Gerenciar Motoristas
+            </Button>
+          </Link>
+        </div>
 
-        {/* Demo Notice */}
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
-          <div className="text-sm font-medium text-yellow-800 mb-1">
-            🚀 Modo Demonstração
+        {/* System Status */}
+        <div className="bg-gradient-viaja-subtle border border-viaja-blue/20 rounded-lg p-4 text-center">
+          <div className="text-sm font-medium text-viaja-blue mb-2">
+            🚀 Sistema Preparado
           </div>
-          <div className="text-xs text-yellow-700">
-            Esta é uma versão demonstrativa do Viaja+. Em produção, conecte APIs reais de mapeamento e pagamento.
+          <div className="text-xs text-gray-600">
+            App configurado para trabalhar com dados reais do banco de dados
           </div>
         </div>
       </div>
@@ -213,7 +155,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header 
-        userName={userData.name.split(' ')[0]} 
+        userName={userData.name} 
         onProfileClick={() => setCurrentView('profile')} 
       />
       

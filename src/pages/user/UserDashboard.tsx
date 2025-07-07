@@ -13,59 +13,19 @@ import UserHeader from '@/components/user/UserHeader';
 const UserDashboard = () => {
   const [rideState, setRideState] = useState<'idle' | 'searching' | 'driver-assigned' | 'driver-arriving' | 'in-transit' | 'completed'>('idle');
 
+  // User data - will come from database
   const userData = {
-    name: 'Maria Silva',
-    email: 'maria.silva@email.com',
-    rating: 4.8,
-    totalTrips: 47,
-    memberSince: '2023'
+    name: 'Usuário',
+    email: 'usuario@email.com',
+    rating: 0,
+    totalTrips: 0,
+    memberSince: '2024'
   };
-
-  const mockDrivers = [
-    {
-      id: '1',
-      lat: -23.5505,
-      lng: -46.6333,
-      name: 'João Santos',
-      rating: 4.9,
-      eta: '3 min'
-    },
-    {
-      id: '2',
-      lat: -23.5515,
-      lng: -46.6343,
-      name: 'Ana Costa',
-      rating: 4.7,
-      eta: '5 min'
-    }
-  ];
-
-  const recentRides = [
-    {
-      id: 1,
-      from: 'Shopping Center',
-      to: 'Centro da Cidade',
-      date: '2024-01-15',
-      price: 'R$ 12,50',
-      status: 'completed'
-    },
-    {
-      id: 2,
-      from: 'Aeroporto',
-      to: 'Hotel Central',
-      date: '2024-01-10',
-      price: 'R$ 28,90',
-      status: 'completed'
-    }
-  ];
 
   const handleRequestRide = (vehicleType: string, pickup: string, destination: string) => {
     setRideState('searching');
-    // Mock ride flow simulation
-    setTimeout(() => setRideState('driver-assigned'), 3000);
-    setTimeout(() => setRideState('driver-arriving'), 6000);
-    setTimeout(() => setRideState('in-transit'), 12000);
-    setTimeout(() => setRideState('completed'), 20000);
+    // In real app, this would connect to database
+    setTimeout(() => setRideState('idle'), 3000);
   };
 
   const handleCancelRide = () => {
@@ -84,12 +44,18 @@ const UserDashboard = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Map and Ride Interface */}
-            <MapView 
-              drivers={mockDrivers}
-              userLocation={{ lat: -23.5505, lng: -46.6333 }}
-              destination={rideState !== 'idle' ? { lat: -23.5525, lng: -46.6353 } : undefined}
-            />
+            {/* Map Placeholder */}
+            <div className="w-full h-96 bg-gradient-to-br from-blue-50 to-green-50 rounded-lg border-2 border-dashed border-blue-300 p-6">
+              <div className="h-full flex flex-col items-center justify-center text-center">
+                <MapPin className="h-12 w-12 text-blue-500 mb-4" />
+                <h3 className="text-xl font-semibold text-gray-700 mb-2">
+                  Mapa de Corridas
+                </h3>
+                <p className="text-gray-500">
+                  Visualização em tempo real das corridas será exibida aqui
+                </p>
+              </div>
+            </div>
 
             <div className="flex justify-center">
               {rideState === 'idle' ? (
@@ -97,13 +63,7 @@ const UserDashboard = () => {
               ) : (
                 <RideStatus
                   status={rideState}
-                  driver={rideState !== 'searching' ? {
-                    name: 'João Santos',
-                    rating: 4.9,
-                    vehicle: 'Honda Civic Branco',
-                    plate: 'ABC-1234',
-                    eta: '3 min'
-                  } : undefined}
+                  driver={undefined}
                   onCancel={handleCancelRide}
                   onRate={handleRateRide}
                 />
@@ -125,8 +85,8 @@ const UserDashboard = () => {
                 <div className="flex justify-between">
                   <span className="text-gray-600">Avaliação</span>
                   <div className="flex items-center space-x-1">
-                    <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                    <span className="font-semibold">{userData.rating}</span>
+                    <Star className="h-4 w-4 text-gray-400" />
+                    <span className="text-gray-500">Sem avaliações</span>
                   </div>
                 </div>
                 <div className="flex justify-between">
@@ -165,7 +125,7 @@ const UserDashboard = () => {
               </CardContent>
             </Card>
 
-            {/* Recent Rides */}
+            {/* Empty Recent Rides */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
@@ -173,22 +133,12 @@ const UserDashboard = () => {
                   <span>Viagens Recentes</span>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                {recentRides.map((ride) => (
-                  <div key={ride.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <MapPin className="h-4 w-4 text-viaja-blue" />
-                      <div>
-                        <div className="font-medium text-sm">{ride.from}</div>
-                        <div className="text-xs text-gray-600">→ {ride.to}</div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-semibold text-sm">{ride.price}</div>
-                      <div className="text-xs text-gray-600">{ride.date}</div>
-                    </div>
-                  </div>
-                ))}
+              <CardContent>
+                <div className="text-center py-8">
+                  <MapPin className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                  <p className="text-gray-500 text-sm">Nenhuma viagem realizada</p>
+                  <p className="text-gray-400 text-xs">Suas viagens aparecerão aqui</p>
+                </div>
               </CardContent>
             </Card>
           </div>
