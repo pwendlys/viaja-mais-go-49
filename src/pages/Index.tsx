@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { LogIn, UserPlus, MapPin } from 'lucide-react';
@@ -77,6 +76,14 @@ const Index = () => {
     }
   }, [isConfigured, isLoading]);
 
+  const handleApiKeyUpdate = (newKey: string) => {
+    updateApiKey(newKey);
+    // Recarregar a página para aplicar a nova chave
+    setTimeout(() => {
+      window.location.reload();
+    }, 500);
+  };
+
   const handleRequestRide = (vehicleType: string, pickup: string, destination: string) => {
     if (!isConfigured) {
       toast.error('Configure sua chave da API do Google Maps primeiro', {
@@ -115,7 +122,7 @@ const Index = () => {
     return (
       <div className="space-y-6">
         {/* Google Maps API Configuration - sempre visível quando não configurada */}
-        <GoogleMapsConfig onApiKeySet={updateApiKey} />
+        <GoogleMapsConfig onApiKeySet={handleApiKeyUpdate} />
 
         {/* Auth Buttons */}
         <div className="flex justify-center space-x-4 mb-6">

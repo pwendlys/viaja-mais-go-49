@@ -1,6 +1,12 @@
 
+// Função para obter a chave da API do localStorage
+const getGoogleMapsApiKey = (): string => {
+  const savedKey = localStorage.getItem('google_maps_api_key');
+  return savedKey && savedKey !== 'YOUR_GOOGLE_MAPS_API_KEY_HERE' ? savedKey : 'YOUR_GOOGLE_MAPS_API_KEY_HERE';
+};
+
 // Configure sua chave da API do Google Maps aqui
-export const GOOGLE_MAPS_API_KEY = 'YOUR_GOOGLE_MAPS_API_KEY_HERE'; // Substitua pela sua chave real
+export const GOOGLE_MAPS_API_KEY = getGoogleMapsApiKey();
 
 // Configurações do Google Maps
 export const GOOGLE_MAPS_LIBRARIES = ['places', 'geometry'];
