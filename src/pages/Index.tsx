@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { LogIn, UserPlus, MapPin, Car, Clock, Star } from 'lucide-react';
+import { LogIn, UserPlus, Car } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Header from '@/components/Header';
 import RideRequest from '@/components/RideRequest';
@@ -29,7 +29,7 @@ const Index = () => {
   useEffect(() => {
     const timer = setTimeout(() => {
       toast.success('Bem-vindo ao Viaja+! 🚗', {
-        description: 'Sua solução de mobilidade urbana rápida e confiável.'
+        description: 'Sua solução de mobilidade urbana com Google Maps integrado.'
       });
     }, 1000);
 
@@ -86,30 +86,7 @@ const Index = () => {
           </Link>
         </div>
 
-        {/* Map Placeholder - Ready for Integration */}
-        <div className="w-full h-96 bg-gradient-to-br from-blue-50 to-green-50 rounded-lg border-2 border-dashed border-blue-300 p-6">
-          <div className="h-full flex flex-col items-center justify-center text-center">
-            <MapPin className="h-12 w-12 text-blue-500 mb-4" />
-            <h3 className="text-xl font-semibold text-gray-700 mb-2">
-              Mapa de Corridas
-            </h3>
-            <p className="text-gray-500 mb-4">
-              Espaço reservado para visualização das corridas em tempo real
-            </p>
-            <div className="bg-white rounded-lg p-4 shadow-sm border">
-              <p className="text-sm text-gray-600">
-                🗺️ Aqui será exibido o mapa interativo com:
-              </p>
-              <ul className="text-sm text-gray-500 mt-2 space-y-1">
-                <li>• Localização dos motoristas</li>
-                <li>• Rotas das corridas ativas</li>
-                <li>• Pontos de origem e destino</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-
-        {/* Ride Interface */}
+        {/* Ride Interface with Integrated Google Maps */}
         <div className="flex justify-center">
           {rideState === 'idle' ? (
             <RideRequest onRequestRide={handleRequestRide} />
@@ -142,10 +119,10 @@ const Index = () => {
         {/* System Status */}
         <div className="bg-gradient-viaja-subtle border border-viaja-blue/20 rounded-lg p-4 text-center">
           <div className="text-sm font-medium text-viaja-blue mb-2">
-            🚀 Sistema Preparado
+            🗺️ Google Maps Integrado
           </div>
           <div className="text-xs text-gray-600">
-            App configurado para trabalhar com dados reais do banco de dados
+            Sistema configurado com geolocalização, rotas e autocompletar de endereços
           </div>
         </div>
       </div>
