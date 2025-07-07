@@ -1,6 +1,6 @@
 
 import React from 'react';
-import MapboxComponent from '@/components/maps/MapboxComponent';
+import SecureMapboxComponent from '@/components/maps/SecureMapboxComponent';
 
 interface Driver {
   id: string;
@@ -19,7 +19,7 @@ interface MapViewProps {
 
 const MapView = ({ drivers, userLocation, destination }: MapViewProps) => {
   return (
-    <MapboxComponent
+    <SecureMapboxComponent
       drivers={drivers}
       origin={userLocation}
       destination={destination}

@@ -1,11 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
-import { MapPin, Clock, CreditCard, Star, Navigation } from 'lucide-react';
+import { MapPin, Clock, CreditCard, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import MapboxAddressAutocomplete from '@/components/maps/MapboxAddressAutocomplete';
-import MapboxComponent from '@/components/maps/MapboxComponent';
+import SecureMapboxAddressAutocomplete from '@/components/maps/SecureMapboxAddressAutocomplete';
+import SecureMapboxComponent from '@/components/maps/SecureMapboxComponent';
+import { useMapboxApi } from '@/hooks/useMapboxApi';
 import { toast } from 'sonner';
 
 interface VehicleOption {
@@ -29,48 +30,30 @@ const RideRequest = ({ onRequestRide }: RideRequestProps) => {
   const [routeInfo, setRouteInfo] = useState<any>(null);
   const [pickupCoords, setPickupCoords] = useState<{lat: number, lng: number} | null>(null);
   const [destinationCoords, setDestinationCoords] = useState<{lat: number, lng: number} | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  const mapboxToken = localStorage.getItem('mapbox_token');
+  const { calculateRoute, loading } = useMapboxApi();
 
   // Calculate route when both coordinates are available
   useEffect(() => {
-    const calculateRoute = async () => {
-      if (pickupCoords && destinationCoords && mapboxToken) {
-        setLoading(true);
+    const getRoute = async () => {
+      if (pickupCoords && destinationCoords) {
         try {
-          const response = await fetch(
-            `https://api.mapbox.com/directions/v5/mapbox/driving/${pickupCoords.lng},${pickupCoords.lat};${destinationCoords.lng},${destinationCoords.lat}?geometries=geojson&access_token=${mapboxToken}`
-          );
-          const data = await response.json();
+          const data = await calculateRoute(pickupCoords, destinationCoords);
           
-          if (data.routes && data.routes[0]) {
-            const route = data.routes[0];
-            const routeData = {
-              distance: {
-                text: `${(route.distance / 1000).toFixed(1)} km`,
-                value: route.distance
-              },
-              duration: {
-                text: `${Math.round(route.duration / 60)} min`,
-                value: route.duration
-              }
-            };
-            setRouteInfo(routeData);
-            toast.success(`Rota calculada: ${routeData.distance.text} • ${routeData.duration.text}`);
+          if (data.summary) {
+            setRouteInfo(data.summary);
+            toast.success(`Rota calculada: ${data.summary.distance.text} • ${data.summary.duration.text}`);
           }
         } catch (error) {
           console.error('Route calculation error:', error);
           setRouteInfo(null);
         }
-        setLoading(false);
       } else {
         setRouteInfo(null);
       }
     };
 
-    calculateRoute();
-  }, [pickupCoords, destinationCoords, mapboxToken]);
+    getRoute();
+  }, [pickupCoords, destinationCoords, calculateRoute]);
 
   const calculateFare = (distanceKm: number, durationMinutes: number): number => {
     const baseFare = 5.00;
@@ -132,12 +115,12 @@ const RideRequest = ({ onRequestRide }: RideRequestProps) => {
 
   return (
     <div className="space-y-6">
-      {/* Mapa do Mapbox com detalhes completos */}
-      <MapboxComponent 
+      {/* Mapa Mapbox Seguro */}
+      <SecureMapboxComponent 
         className="w-full h-96"
         origin={pickupCoords ? { ...pickupCoords, address: pickup } : undefined}
         destination={destinationCoords ? { ...destinationCoords, address: destination } : undefined}
-        center={{ lat: -21.7554, lng: -43.3636 }} // Juiz de Fora
+        center={{ lat: -21.7554, lng: -43.3636 }}
         zoom={13}
       />
 
@@ -149,11 +132,11 @@ const RideRequest = ({ onRequestRide }: RideRequestProps) => {
         </CardHeader>
         
         <CardContent className="space-y-4">
-          {/* Pickup and Destination com autocompletar melhorado */}
+          {/* Pickup and Destination com API segura */}
           <div className="space-y-3">
             <div className="flex items-center space-x-3">
               <div className="w-3 h-3 bg-viaja-blue rounded-full"></div>
-              <MapboxAddressAutocomplete
+              <SecureMapboxAddressAutocomplete
                 value={pickup}
                 onChange={setPickup}
                 placeholder="Ponto de partida"
@@ -165,7 +148,7 @@ const RideRequest = ({ onRequestRide }: RideRequestProps) => {
             
             <div className="flex items-center space-x-3">
               <MapPin className="w-3 h-3 text-viaja-orange" />
-              <MapboxAddressAutocomplete
+              <SecureMapboxAddressAutocomplete
                 value={destination}
                 onChange={setDestination}
                 placeholder="Para onde você vai?"
