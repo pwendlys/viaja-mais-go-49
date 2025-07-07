@@ -4,8 +4,8 @@ import { MapPin, Clock, CreditCard, Star, Navigation } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import AddressAutocomplete from '@/components/maps/AddressAutocomplete';
-import InteractiveMap from '@/components/maps/InteractiveMap';
+import EnhancedAddressAutocomplete from '@/components/maps/EnhancedAddressAutocomplete';
+import GoogleMapComponent from '@/components/maps/GoogleMapComponent';
 import { useGoogleMaps } from '@/hooks/useGoogleMaps';
 import { toast } from 'sonner';
 
@@ -28,42 +28,22 @@ const RideRequest = ({ onRequestRide }: RideRequestProps) => {
   const [destination, setDestination] = useState('');
   const [selectedVehicle, setSelectedVehicle] = useState<string>('');
   const [routeInfo, setRouteInfo] = useState<any>(null);
-  const [currentLocation, setCurrentLocation] = useState<{lat: number, lng: number} | null>(null);
+  const [pickupCoords, setPickupCoords] = useState<{lat: number, lng: number} | null>(null);
+  const [destinationCoords, setDestinationCoords] = useState<{lat: number, lng: number} | null>(null);
   
-  const { getDirections, geocodeAddress, calculateFare, loading } = useGoogleMaps();
+  const { getDirections, calculateFare, loading } = useGoogleMaps();
 
-  // Get user's current location
-  useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setCurrentLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
-          });
-          setPickup('Minha localização atual');
-        },
-        (error) => {
-          console.warn('Geolocation error:', error);
-          setPickup('');
-        }
-      );
-    }
-  }, []);
-
-  // Calculate route when both addresses are set
+  // Calculate route when both coordinates are available
   useEffect(() => {
     const calculateRoute = async () => {
-      if (pickup && destination && pickup !== destination) {
+      if (pickupCoords && destinationCoords && pickup && destination) {
         try {
           const directions = await getDirections(pickup, destination);
           if (directions?.summary) {
             setRouteInfo(directions.summary);
             
-            // Update vehicle prices based on distance
             const distanceKm = directions.summary.distance.value / 1000;
             const durationMinutes = directions.summary.duration.value / 60;
-            const baseFare = calculateFare(distanceKm, durationMinutes);
             
             toast.success(`Rota calculada: ${directions.summary.distance.text} • ${directions.summary.duration.text}`);
           }
@@ -77,7 +57,7 @@ const RideRequest = ({ onRequestRide }: RideRequestProps) => {
     };
 
     calculateRoute();
-  }, [pickup, destination, getDirections, calculateFare]);
+  }, [pickupCoords, destinationCoords, pickup, destination, getDirections]);
 
   const vehicleOptions: VehicleOption[] = [
     {
@@ -115,33 +95,29 @@ const RideRequest = ({ onRequestRide }: RideRequestProps) => {
     }
   };
 
-  const handleUseCurrentLocation = () => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setCurrentLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
-          });
-          setPickup('Minha localização atual');
-        },
-        (error) => {
-          toast.error('Não foi possível obter sua localização');
-          console.error('Geolocation error:', error);
-        }
-      );
-    } else {
-      toast.error('Geolocalização não é suportada neste dispositivo');
+  const handlePickupSelect = (place: any) => {
+    setPickup(place.description);
+    if (place.coordinates) {
+      setPickupCoords(place.coordinates);
+    }
+  };
+
+  const handleDestinationSelect = (place: any) => {
+    setDestination(place.description);
+    if (place.coordinates) {
+      setDestinationCoords(place.coordinates);
     }
   };
 
   return (
     <div className="space-y-6">
-      {/* Interactive Map */}
-      <InteractiveMap 
-        className="w-full"
-        origin={currentLocation ? { ...currentLocation, address: pickup } : undefined}
-        destination={routeInfo ? { lat: 0, lng: 0, address: destination } : undefined}
+      {/* Mapa do Google Maps com detalhes completos */}
+      <GoogleMapComponent 
+        className="w-full h-96"
+        origin={pickupCoords ? { ...pickupCoords, address: pickup } : undefined}
+        destination={destinationCoords ? { ...destinationCoords, address: destination } : undefined}
+        center={{ lat: -21.7554, lng: -43.3636 }} // Juiz de Fora
+        zoom={13}
       />
 
       <Card className="w-full max-w-md mx-auto">
@@ -152,35 +128,29 @@ const RideRequest = ({ onRequestRide }: RideRequestProps) => {
         </CardHeader>
         
         <CardContent className="space-y-4">
-          {/* Pickup and Destination */}
+          {/* Pickup and Destination com autocompletar melhorado */}
           <div className="space-y-3">
             <div className="flex items-center space-x-3">
               <div className="w-3 h-3 bg-viaja-blue rounded-full"></div>
-              <div className="flex-1 flex space-x-2">
-                <AddressAutocomplete
-                  value={pickup}
-                  onChange={setPickup}
-                  placeholder="Ponto de partida"
-                  className="flex-1"
-                />
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleUseCurrentLocation}
-                  className="shrink-0"
-                >
-                  <Navigation className="w-4 h-4" />
-                </Button>
-              </div>
+              <EnhancedAddressAutocomplete
+                value={pickup}
+                onChange={setPickup}
+                placeholder="Ponto de partida"
+                className="flex-1"
+                onPlaceSelect={handlePickupSelect}
+                showCurrentLocationButton={true}
+              />
             </div>
             
             <div className="flex items-center space-x-3">
               <MapPin className="w-3 h-3 text-viaja-orange" />
-              <AddressAutocomplete
+              <EnhancedAddressAutocomplete
                 value={destination}
                 onChange={setDestination}
                 placeholder="Para onde você vai?"
                 className="flex-1"
+                onPlaceSelect={handleDestinationSelect}
+                showCurrentLocationButton={false}
               />
             </div>
           </div>

@@ -1,6 +1,6 @@
 
 import React from 'react';
-import InteractiveMap from '@/components/maps/InteractiveMap';
+import GoogleMapComponent from '@/components/maps/GoogleMapComponent';
 
 interface Driver {
   id: string;
@@ -19,11 +19,13 @@ interface MapViewProps {
 
 const MapView = ({ drivers, userLocation, destination }: MapViewProps) => {
   return (
-    <InteractiveMap
+    <GoogleMapComponent
       drivers={drivers}
       origin={userLocation}
       destination={destination}
       className="w-full h-96"
+      center={{ lat: -21.7554, lng: -43.3636 }} // Juiz de Fora
+      zoom={13}
     />
   );
 };
