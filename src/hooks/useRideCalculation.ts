@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useGoogleMaps } from './useGoogleMaps';
+import { useGoogleMapsApiKey } from './useGoogleMapsApiKey';
 
 interface RideCalculationParams {
   origin: { lat: number; lng: number };
@@ -19,13 +20,19 @@ interface RideEstimate {
 export const useRideCalculation = () => {
   const [isCalculating, setIsCalculating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { apiKey, isConfigured } = useGoogleMapsApiKey();
 
   const { calculateRoute } = useGoogleMaps({
-    apiKey: 'YOUR_API_KEY_HERE', // Será substituído pela chave real
+    apiKey: apiKey || '',
     libraries: ['places'],
   });
 
   const calculateRideEstimate = async ({ origin, destination }: RideCalculationParams): Promise<RideEstimate | null> => {
+    if (!isConfigured || !apiKey) {
+      setError('Chave da API do Google Maps não configurada');
+      return null;
+    }
+
     setIsCalculating(true);
     setError(null);
 
@@ -82,5 +89,6 @@ export const useRideCalculation = () => {
     calculateRideEstimate,
     isCalculating,
     error,
+    isConfigured,
   };
 };

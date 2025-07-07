@@ -8,6 +8,8 @@ import MapView from '@/components/MapView';
 import RideRequest from '@/components/RideRequest';
 import RideStatus from '@/components/RideStatus';
 import UserProfile from '@/components/UserProfile';
+import GoogleMapsConfig from '@/components/maps/GoogleMapsConfig';
+import { useGoogleMapsApiKey } from '@/hooks/useGoogleMapsApiKey';
 import { toast } from 'sonner';
 
 type AppView = 'map' | 'profile';
@@ -16,6 +18,7 @@ type RideState = 'idle' | 'searching' | 'driver-assigned' | 'driver-arriving' | 
 const Index = () => {
   const [currentView, setCurrentView] = useState<AppView>('map');
   const [rideState, setRideState] = useState<RideState>('idle');
+  const { apiKey, isConfigured, updateApiKey } = useGoogleMapsApiKey();
   
   // Mock data
   const userData = {
@@ -67,6 +70,11 @@ const Index = () => {
   }, []);
 
   const handleRequestRide = (vehicleType: string, pickup: string, destination: string) => {
+    if (!isConfigured) {
+      toast.error('Configure sua chave da API do Google Maps primeiro');
+      return;
+    }
+    
     // Show login prompt instead of processing ride
     toast.info('Faça login para solicitar uma corrida', {
       description: 'Você precisa estar logado para usar nossos serviços'
@@ -96,6 +104,11 @@ const Index = () => {
 
     return (
       <div className="space-y-6">
+        {/* Google Maps API Configuration */}
+        {!isConfigured && (
+          <GoogleMapsConfig onApiKeySet={updateApiKey} />
+        )}
+
         {/* Auth Buttons */}
         <div className="flex justify-center space-x-4 mb-6">
           <Link to="/login">
@@ -112,35 +125,39 @@ const Index = () => {
           </Link>
         </div>
 
-        {/* Map View */}
-        <MapView 
-          drivers={mockDrivers}
-          userLocation={{ lat: -23.5505, lng: -46.6333 }}
-          destination={rideState !== 'idle' ? { lat: -23.5525, lng: -46.6353 } : undefined}
-        />
+        {/* Map View - only show if API is configured */}
+        {isConfigured && (
+          <MapView 
+            drivers={mockDrivers}
+            userLocation={{ lat: -23.5505, lng: -46.6333 }}
+            destination={rideState !== 'idle' ? { lat: -23.5525, lng: -46.6353 } : undefined}
+          />
+        )}
 
         {/* Ride Interface */}
-        <div className="flex justify-center">
-          {rideState === 'idle' ? (
-            <RideRequest onRequestRide={handleRequestRide} />
-          ) : (
-            <RideStatus
-              status={rideState}
-              driver={rideState !== 'searching' ? {
-                name: currentDriver.name,
-                rating: currentDriver.rating,
-                vehicle: 'Honda Civic Branco',
-                plate: 'ABC-1234',
-                eta: currentDriver.eta
-              } : undefined}
-              onCancel={handleCancelRide}
-              onRate={handleRateRide}
-            />
-          )}
-        </div>
+        {isConfigured && (
+          <div className="flex justify-center">
+            {rideState === 'idle' ? (
+              <RideRequest onRequestRide={handleRequestRide} />
+            ) : (
+              <RideStatus
+                status={rideState}
+                driver={rideState !== 'searching' ? {
+                  name: currentDriver.name,
+                  rating: currentDriver.rating,
+                  vehicle: 'Honda Civic Branco',
+                  plate: 'ABC-1234',
+                  eta: currentDriver.eta
+                } : undefined}
+                onCancel={handleCancelRide}
+                onRate={handleRateRide}
+              />
+            )}
+          </div>
+        )}
 
         {/* Safety Banner */}
-        {rideState === 'idle' && (
+        {rideState === 'idle' && isConfigured && (
           <div className="bg-gradient-viaja-subtle border border-viaja-blue/20 rounded-lg p-4 text-center">
             <div className="text-sm font-medium text-viaja-blue mb-2">
               🛡️ Sua segurança é nossa prioridade

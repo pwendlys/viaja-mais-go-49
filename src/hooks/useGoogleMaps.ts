@@ -23,46 +23,64 @@ export const useGoogleMaps = (config: GoogleMapsConfig) => {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Verificar se já existe uma instância carregada
     if (window.google && window.google.maps) {
       setIsLoaded(true);
       return;
     }
 
+    // Verificar se a chave é válida
+    if (!config.apiKey || config.apiKey === 'YOUR_API_KEY_HERE') {
+      setLoadError('Chave da API do Google Maps não configurada');
+      return;
+    }
+
+    // Limpar erro anterior
+    setLoadError(null);
+
     const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${config.apiKey}&libraries=${config.libraries.join(',')}`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${config.apiKey}&libraries=${config.libraries.join(',')}&callback=initGoogleMaps`;
     script.async = true;
     script.defer = true;
     
-    script.onload = () => {
+    // Callback global para quando o script carregar
+    (window as any).initGoogleMaps = () => {
       setIsLoaded(true);
+      delete (window as any).initGoogleMaps;
     };
     
     script.onerror = () => {
-      setLoadError('Erro ao carregar Google Maps API');
+      setLoadError('Erro ao carregar Google Maps API. Verifique sua chave de API.');
     };
 
     document.head.appendChild(script);
 
     return () => {
       const existingScript = document.querySelector(`script[src*="maps.googleapis.com"]`);
-      if (existingScript) {
-        document.head.removeChild(existingScript);
+      if (existingScript && existingScript.parentNode) {
+        existingScript.parentNode.removeChild(existingScript);
+      }
+      if ((window as any).initGoogleMaps) {
+        delete (window as any).initGoogleMaps;
       }
     };
   }, [config.apiKey, config.libraries]);
 
   const calculateRoute = async (origin: Location, destination: Location): Promise<RouteInfo | null> => {
-    if (!isLoaded || !window.google) return null;
+    if (!isLoaded || !window.google) {
+      console.warn('Google Maps não está carregado');
+      return null;
+    }
 
     try {
       const directionsService = new window.google.maps.DirectionsService();
       
-      const result = await new Promise<any>((resolve, reject) => {
+      const result = await new Promise<google.maps.DirectionsResult>((resolve, reject) => {
         directionsService.route({
           origin: { lat: origin.lat, lng: origin.lng },
           destination: { lat: destination.lat, lng: destination.lng },
           travelMode: window.google.maps.TravelMode.DRIVING,
-        }, (result: any, status: string) => {
+        }, (result: google.maps.DirectionsResult | null, status: google.maps.DirectionsStatus) => {
           if (status === 'OK' && result) {
             resolve(result);
           } else {
@@ -87,13 +105,16 @@ export const useGoogleMaps = (config: GoogleMapsConfig) => {
   };
 
   const geocodeAddress = async (address: string): Promise<Location | null> => {
-    if (!isLoaded || !window.google) return null;
+    if (!isLoaded || !window.google) {
+      console.warn('Google Maps não está carregado');
+      return null;
+    }
 
     try {
       const geocoder = new window.google.maps.Geocoder();
       
-      const result = await new Promise<any[]>((resolve, reject) => {
-        geocoder.geocode({ address }, (results: any[], status: string) => {
+      const result = await new Promise<google.maps.GeocoderResult[]>((resolve, reject) => {
+        geocoder.geocode({ address }, (results: google.maps.GeocoderResult[] | null, status: google.maps.GeocoderStatus) => {
           if (status === 'OK' && results) {
             resolve(results);
           } else {

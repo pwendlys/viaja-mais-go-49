@@ -27,7 +27,7 @@ const AddressAutocomplete = ({
   });
 
   useEffect(() => {
-    if (!isLoaded || !inputRef.current || autocomplete) return;
+    if (!isLoaded || !inputRef.current || autocomplete || !window.google) return;
 
     const autocompleteInstance = new window.google.maps.places.Autocomplete(inputRef.current, {
       types: ['address'],
