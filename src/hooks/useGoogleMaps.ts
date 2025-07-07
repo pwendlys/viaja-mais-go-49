@@ -94,7 +94,7 @@ export const useGoogleMaps = (config?: GoogleMapsConfig) => {
           origin: { lat: origin.lat, lng: origin.lng },
           destination: { lat: destination.lat, lng: destination.lng },
           travelMode: window.google.maps.TravelMode.DRIVING,
-        }, (result: google.maps.DirectionsResult | null, status: google.maps.DirectionsStatus) => {
+        }, (result, status) => {
           if (status === 'OK' && result) {
             resolve(result);
           } else {
@@ -128,7 +128,7 @@ export const useGoogleMaps = (config?: GoogleMapsConfig) => {
       const geocoder = new window.google.maps.Geocoder();
       
       const result = await new Promise<google.maps.GeocoderResult[]>((resolve, reject) => {
-        geocoder.geocode({ address }, (results: google.maps.GeocoderResult[] | null, status: google.maps.GeocoderStatus) => {
+        geocoder.geocode({ address }, (results, status) => {
           if (status === 'OK' && results) {
             resolve(results);
           } else {

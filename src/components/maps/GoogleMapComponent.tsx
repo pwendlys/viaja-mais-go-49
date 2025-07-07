@@ -88,7 +88,7 @@ const GoogleMapComponent = ({
       origin,
       destination,
       travelMode: window.google.maps.TravelMode.DRIVING,
-    }, (result: google.maps.DirectionsResult | null, status: google.maps.DirectionsStatus) => {
+    }, (result, status) => {
       if (status === 'OK' && result && directionsRenderer) {
         directionsRenderer.setDirections(result);
       }
