@@ -1,14 +1,12 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { LogIn, UserPlus, MapPin } from 'lucide-react';
+import { LogIn, UserPlus, MapPin, Car, Clock, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Header from '@/components/Header';
-import GoogleMapComponent from '@/components/maps/GoogleMapComponent';
 import RideRequest from '@/components/RideRequest';
 import RideStatus from '@/components/RideStatus';
 import UserProfile from '@/components/UserProfile';
-import GoogleMapsConfig from '@/components/maps/GoogleMapsConfig';
-import { useGoogleMapsApiKey } from '@/hooks/useGoogleMapsApiKey';
 import { toast } from 'sonner';
 
 type AppView = 'map' | 'profile';
@@ -17,7 +15,6 @@ type RideState = 'idle' | 'searching' | 'driver-assigned' | 'driver-arriving' | 
 const Index = () => {
   const [currentView, setCurrentView] = useState<AppView>('map');
   const [rideState, setRideState] = useState<RideState>('idle');
-  const { apiKey, isConfigured, isLoading, updateApiKey } = useGoogleMapsApiKey();
   
   // Mock data
   const userData = {
@@ -35,7 +32,9 @@ const Index = () => {
       lng: -46.6333,
       name: 'João Santos',
       rating: 4.9,
-      eta: '3 min'
+      eta: '3 min',
+      vehicle: 'Honda Civic Branco',
+      plate: 'ABC-1234'
     },
     {
       id: '2',
@@ -43,7 +42,9 @@ const Index = () => {
       lng: -46.6343,
       name: 'Ana Costa',
       rating: 4.7,
-      eta: '5 min'
+      eta: '5 min',
+      vehicle: 'Toyota Corolla Prata',
+      plate: 'DEF-5678'
     },
     {
       id: '3',
@@ -51,7 +52,9 @@ const Index = () => {
       lng: -46.6323,
       name: 'Carlos Lima',
       rating: 4.8,
-      eta: '7 min'
+      eta: '7 min',
+      vehicle: 'Hyundai HB20 Azul',
+      plate: 'GHI-9012'
     }
   ];
 
@@ -59,33 +62,23 @@ const Index = () => {
 
   // Welcome toast effect
   useEffect(() => {
-    if (!isLoading && isConfigured) {
-      const timer = setTimeout(() => {
-        toast.success('Bem-vindo ao Viaja+! 🚗', {
-          description: 'Sua solução de mobilidade urbana rápida e confiável.'
-        });
-      }, 1000);
+    const timer = setTimeout(() => {
+      toast.success('Bem-vindo ao Viaja+! 🚗', {
+        description: 'Sua solução de mobilidade urbana rápida e confiável.'
+      });
+    }, 1000);
 
-      return () => clearTimeout(timer);
-    }
-  }, [isConfigured, isLoading]);
-
-  const handleApiKeyUpdate = (newKey: string) => {
-    updateApiKey(newKey);
-  };
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleRequestRide = (vehicleType: string, pickup: string, destination: string) => {
-    if (!isConfigured) {
-      toast.error('Configure sua chave da API do Google Maps primeiro', {
-        description: 'É necessário configurar a API do Google Maps para solicitar corridas'
-      });
-      return;
-    }
+    setRideState('searching');
     
-    // Show login prompt instead of processing ride
-    toast.info('Faça login para solicitar uma corrida', {
-      description: 'Você precisa estar logado para usar nossos serviços'
-    });
+    // Simulate finding a driver
+    setTimeout(() => {
+      setRideState('driver-assigned');
+      toast.success(`Motorista encontrado! ${currentDriver.name} está a caminho.`);
+    }, 2000);
   };
 
   const handleCancelRide = () => {
@@ -111,9 +104,6 @@ const Index = () => {
 
     return (
       <div className="space-y-6">
-        {/* Google Maps API Configuration - mostrar apenas se não configurada */}
-        {!isConfigured && <GoogleMapsConfig onApiKeySet={handleApiKeyUpdate} />}
-
         {/* Auth Buttons */}
         <div className="flex justify-center space-x-4 mb-6">
           <Link to="/login">
@@ -130,34 +120,50 @@ const Index = () => {
           </Link>
         </div>
 
-        {/* Map View - only show if API is configured */}
-        {isConfigured ? (
-          <GoogleMapComponent
-            center={{ lat: -23.5505, lng: -46.6333 }}
-            zoom={15}
-            markers={mockDrivers.map(driver => ({
-              lat: driver.lat,
-              lng: driver.lng,
-              title: `${driver.name} - ⭐ ${driver.rating}`,
-              icon: undefined
-            }))}
-            showDirections={rideState !== 'idle'}
-            origin={rideState !== 'idle' ? { lat: -23.5505, lng: -46.6333 } : undefined}
-            destination={rideState !== 'idle' ? { lat: -23.5525, lng: -46.6353 } : undefined}
-          />
-        ) : (
-          <div className="w-full h-96 bg-gradient-to-br from-blue-50 to-green-50 rounded-lg flex items-center justify-center border-2 border-dashed border-blue-200">
-            <div className="text-center p-8">
-              <MapPin className="h-16 w-16 text-blue-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-700 mb-2">
-                Mapa será exibido aqui
+        {/* Demo Map View */}
+        <div className="w-full h-96 bg-gradient-to-br from-blue-50 to-green-50 rounded-lg border-2 border-blue-200 p-6">
+          <div className="h-full flex flex-col">
+            <div className="text-center mb-4">
+              <MapPin className="h-8 w-8 text-blue-500 mx-auto mb-2" />
+              <h3 className="text-lg font-semibold text-gray-700">
+                Mapa Interativo - São Paulo, SP
               </h3>
-              <p className="text-gray-500">
-                Configure sua chave da API do Google Maps acima para ver o mapa interativo
+              <p className="text-sm text-gray-500">
+                Visualização dos motoristas próximos
               </p>
             </div>
+            
+            {/* Drivers List */}
+            <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
+              {mockDrivers.map((driver) => (
+                <div 
+                  key={driver.id} 
+                  className="bg-white rounded-lg p-4 shadow-sm border hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="bg-blue-100 p-2 rounded-full">
+                      <Car className="h-4 w-4 text-blue-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h4 className="font-medium text-gray-800">{driver.name}</h4>
+                      <p className="text-sm text-gray-500">{driver.vehicle}</p>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex justify-between items-center text-sm">
+                    <div className="flex items-center space-x-1">
+                      <Star className="h-3 w-3 text-yellow-400 fill-current" />
+                      <span className="text-gray-600">{driver.rating}</span>
+                    </div>
+                    <div className="flex items-center space-x-1 text-green-600">
+                      <Clock className="h-3 w-3" />
+                      <span>{driver.eta}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-        )}
+        </div>
 
         {/* Ride Interface */}
         <div className="flex justify-center">
@@ -169,8 +175,8 @@ const Index = () => {
               driver={rideState !== 'searching' ? {
                 name: currentDriver.name,
                 rating: currentDriver.rating,
-                vehicle: 'Honda Civic Branco',
-                plate: 'ABC-1234',
+                vehicle: currentDriver.vehicle,
+                plate: currentDriver.plate,
                 eta: currentDriver.eta
               } : undefined}
               onCancel={handleCancelRide}
@@ -190,20 +196,19 @@ const Index = () => {
             </div>
           </div>
         )}
-      </div>
-    );
-  };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-viaja-blue mx-auto mb-4"></div>
-          <p className="text-gray-600">Carregando Viaja+...</p>
+        {/* Demo Notice */}
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
+          <div className="text-sm font-medium text-yellow-800 mb-1">
+            🚀 Modo Demonstração
+          </div>
+          <div className="text-xs text-yellow-700">
+            Esta é uma versão demonstrativa do Viaja+. Em produção, conecte APIs reais de mapeamento e pagamento.
+          </div>
         </div>
       </div>
     );
-  }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
