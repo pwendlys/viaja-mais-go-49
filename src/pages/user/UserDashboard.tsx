@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom';
 import RideRequest from '@/components/RideRequest';
 import RideStatus from '@/components/RideStatus';
 import UserHeader from '@/components/user/UserHeader';
+import MapView from '@/components/MapView';
 
 const UserDashboard = () => {
   const [rideState, setRideState] = useState<'idle' | 'searching' | 'driver-assigned' | 'driver-arriving' | 'in-transit' | 'completed'>('idle');
@@ -20,6 +21,26 @@ const UserDashboard = () => {
     totalTrips: 12,
     memberSince: '2023'
   };
+
+  // Mock drivers for demonstration
+  const mockDrivers = [
+    {
+      id: '1',
+      name: 'João Silva',
+      lat: -21.7608,
+      lng: -43.3667,
+      rating: 4.8,
+      eta: '5 min'
+    },
+    {
+      id: '2',
+      name: 'Ana Santos',
+      lat: -21.7500,
+      lng: -43.3600,
+      rating: 4.9,
+      eta: '8 min'
+    }
+  ];
 
   const handleRequestRide = (vehicleType: string, pickup: string, destination: string) => {
     setRideState('searching');
@@ -58,18 +79,24 @@ const UserDashboard = () => {
               </CardContent>
             </Card>
 
-            {/* Map Placeholder */}
-            <div className="w-full h-96 bg-gradient-to-br from-blue-50 to-green-50 rounded-lg border-2 border-dashed border-blue-300 p-6">
-              <div className="h-full flex flex-col items-center justify-center text-center">
-                <MapPin className="h-12 w-12 text-blue-500 mb-4" />
-                <h3 className="text-xl font-semibold text-gray-700 mb-2">
-                  Mapa de Transporte
-                </h3>
-                <p className="text-gray-500">
+            {/* Map */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <MapPin className="h-5 w-5 text-viaja-blue" />
+                  <span>Mapa de Transporte</span>
+                </CardTitle>
+                <p className="text-sm text-gray-600">
                   Acompanhe em tempo real a localização do seu transporte
                 </p>
-              </div>
-            </div>
+              </CardHeader>
+              <CardContent>
+                <MapView 
+                  drivers={mockDrivers}
+                  userLocation={{ lat: -21.7554, lng: -43.3636 }}
+                />
+              </CardContent>
+            </Card>
 
             <div className="flex justify-center">
               {rideState === 'idle' ? (

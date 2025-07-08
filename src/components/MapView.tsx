@@ -1,6 +1,6 @@
 
 import React from 'react';
-import SecureMapboxComponent from '@/components/maps/SecureMapboxComponent';
+import DashboardMap from '@/components/DashboardMap';
 
 interface Driver {
   id: string;
@@ -19,13 +19,10 @@ interface MapViewProps {
 
 const MapView = ({ drivers, userLocation, destination }: MapViewProps) => {
   return (
-    <SecureMapboxComponent
+    <DashboardMap
       drivers={drivers}
-      origin={userLocation}
+      userLocation={userLocation}
       destination={destination}
-      className="w-full h-96"
-      center={{ lat: -21.7554, lng: -43.3636 }} // Juiz de Fora
-      zoom={13}
     />
   );
 };

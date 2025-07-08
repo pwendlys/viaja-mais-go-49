@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { MapPin, Clock, CreditCard, Star } from 'lucide-react';
+import { MapPin, Clock, Accessibility, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -12,10 +12,10 @@ interface VehicleOption {
   id: string;
   name: string;
   description: string;
-  price: number;
   eta: string;
   capacity: number;
   icon: string;
+  wheelchairAccessible: boolean;
 }
 
 interface RideRequestProps {
@@ -29,6 +29,7 @@ const RideRequest = ({ onRequestRide }: RideRequestProps) => {
   const [routeInfo, setRouteInfo] = useState<any>(null);
   const [pickupCoords, setPickupCoords] = useState<{lat: number, lng: number} | null>(null);
   const [destinationCoords, setDestinationCoords] = useState<{lat: number, lng: number} | null>(null);
+  const [needsWheelchairAccess, setNeedsWheelchairAccess] = useState(false);
   const { calculateRoute, loading } = useMapboxApi();
 
   // Calculate route when both coordinates are available
@@ -54,43 +55,41 @@ const RideRequest = ({ onRequestRide }: RideRequestProps) => {
     getRoute();
   }, [pickupCoords, destinationCoords, calculateRoute]);
 
-  const calculateFare = (distanceKm: number, durationMinutes: number): number => {
-    const baseFare = 5.00;
-    const perKmRate = 2.50;
-    const perMinuteRate = 0.30;
-    
-    return baseFare + (distanceKm * perKmRate) + (durationMinutes * perMinuteRate);
-  };
-
+  // Vehicle options without prices, only showing ETA
   const vehicleOptions: VehicleOption[] = [
     {
       id: 'viaja-economico',
       name: 'Viaja Econômico',
-      description: 'Opção mais em conta',
-      price: routeInfo ? calculateFare(routeInfo.distance.value / 1000, routeInfo.duration.value / 60) * 0.8 : 12.50,
-      eta: '3 min',
+      description: 'Veículo padrão para transporte',
+      eta: '5-8 min',
       capacity: 4,
-      icon: '🚗'
+      icon: '🚗',
+      wheelchairAccessible: false
     },
     {
       id: 'viaja-conforto',
       name: 'Viaja Conforto',
       description: 'Mais espaço e conforto',
-      price: routeInfo ? calculateFare(routeInfo.distance.value / 1000, routeInfo.duration.value / 60) : 18.90,
-      eta: '5 min',
+      eta: '8-12 min',
       capacity: 4,
-      icon: '🚙'
+      icon: '🚙',
+      wheelchairAccessible: false
     },
     {
-      id: 'viaja-premium',
-      name: 'Viaja Premium',
-      description: 'Carros de luxo',
-      price: routeInfo ? calculateFare(routeInfo.distance.value / 1000, routeInfo.duration.value / 60) * 1.5 : 28.50,
-      eta: '7 min',
-      capacity: 4,
-      icon: '🚘'
+      id: 'viaja-acessivel',
+      name: 'Viaja Acessível',
+      description: 'Veículo adaptado para cadeirantes',
+      eta: '10-15 min',
+      capacity: 3,
+      icon: '♿',
+      wheelchairAccessible: true
     }
   ];
+
+  // Filter vehicles based on wheelchair accessibility need
+  const availableVehicles = needsWheelchairAccess 
+    ? vehicleOptions.filter(v => v.wheelchairAccessible)
+    : vehicleOptions;
 
   const handleRequestRide = () => {
     if (selectedVehicle && destination && pickup) {
@@ -159,12 +158,37 @@ const RideRequest = ({ onRequestRide }: RideRequestProps) => {
         </div>
       )}
 
+      {/* Wheelchair Accessibility Option */}
+      {destination && (
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+          <div className="flex items-center space-x-3">
+            <Accessibility className="w-5 h-5 text-viaja-blue" />
+            <div className="flex-1">
+              <label className="flex items-center space-x-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={needsWheelchairAccess}
+                  onChange={(e) => {
+                    setNeedsWheelchairAccess(e.target.checked);
+                    setSelectedVehicle(''); // Reset selection when accessibility changes
+                  }}
+                  className="rounded border-gray-300"
+                />
+                <span className="text-sm font-medium text-gray-700">
+                  Preciso de veículo acessível para cadeira de rodas
+                </span>
+              </label>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Vehicle Options */}
       {destination && (
         <div className="space-y-3">
           <h3 className="font-semibold text-gray-800">Escolha seu veículo:</h3>
           
-          {vehicleOptions.map((vehicle) => (
+          {availableVehicles.map((vehicle) => (
             <div
               key={vehicle.id}
               className={`border rounded-lg p-3 cursor-pointer transition-all ${
@@ -188,13 +212,22 @@ const RideRequest = ({ onRequestRide }: RideRequestProps) => {
                       <Badge variant="secondary" className="text-xs">
                         {vehicle.capacity} pessoas
                       </Badge>
+                      {vehicle.wheelchairAccessible && (
+                        <Badge variant="outline" className="text-xs border-viaja-blue text-viaja-blue">
+                          <Accessibility className="w-3 h-3 mr-1" />
+                          Acessível
+                        </Badge>
+                      )}
                     </div>
                   </div>
                 </div>
                 
                 <div className="text-right">
-                  <div className="font-bold text-lg text-viaja-blue">
-                    R$ {vehicle.price.toFixed(2)}
+                  <div className="font-bold text-lg text-viaja-green">
+                    Gratuito
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    Prefeitura de JF
                   </div>
                 </div>
               </div>
@@ -203,18 +236,18 @@ const RideRequest = ({ onRequestRide }: RideRequestProps) => {
         </div>
       )}
 
-      {/* Payment Method */}
+      {/* Service Information */}
       {selectedVehicle && (
-        <div className="border rounded-lg p-3 bg-gray-50">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <CreditCard className="w-4 h-4 text-gray-600" />
-              <span className="text-sm text-gray-700">Cartão de Crédito</span>
-            </div>
-            <button className="text-sm text-viaja-blue hover:underline">
-              Alterar
-            </button>
+        <div className="border rounded-lg p-3 bg-green-50 border-green-200">
+          <div className="flex items-center space-x-2">
+            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+            <span className="text-sm text-green-700 font-medium">
+              Serviço 100% gratuito oferecido pela Prefeitura Municipal
+            </span>
           </div>
+          <p className="text-xs text-green-600 mt-1">
+            Destinado exclusivamente para consultas médicas e exames de saúde
+          </p>
         </div>
       )}
 
@@ -224,7 +257,7 @@ const RideRequest = ({ onRequestRide }: RideRequestProps) => {
         disabled={!selectedVehicle || !destination || !pickup || loading}
         className="w-full gradient-viaja text-white font-semibold py-3 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
       >
-        {loading ? 'Calculando...' : `Solicitar ${selectedVehicle && vehicleOptions.find(v => v.id === selectedVehicle)?.name}`}
+        {loading ? 'Calculando...' : `Solicitar ${selectedVehicle && availableVehicles.find(v => v.id === selectedVehicle)?.name}`}
       </Button>
     </div>
   );
