@@ -4,9 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Navigation, Clock, Phone, Plus } from 'lucide-react';
+import { MapPin, Navigation, Clock, Phone, Plus, Map } from 'lucide-react';
 import { useMapboxApi } from '@/hooks/useMapboxApi';
 import { toast } from 'sonner';
+import SecureMapboxComponent from '@/components/maps/SecureMapboxComponent';
 
 const Index = () => {
   const [originAddress, setOriginAddress] = useState('');
@@ -14,12 +15,13 @@ const Index = () => {
   const [originCoords, setOriginCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [destinationCoords, setDestinationCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [routeInfo, setRouteInfo] = useState<any>(null);
-  const [isSelectingOrigin, setIsSelectingOrigin] = useState(false);
-  const [isSelectingDestination, setIsSelectingDestination] = useState(false);
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [activeSuggestions, setActiveSuggestions] = useState<'origin' | 'destination' | null>(null);
+  const [selectingMode, setSelectingMode] = useState<'origin' | 'destination' | null>(null);
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number }>({ lat: -21.7554, lng: -43.3636 });
+  const [showMap, setShowMap] = useState(false);
 
-  const { searchPlaces, calculateRoute, loading } = useMapboxApi();
+  const { searchPlaces, calculateRoute, reverseGeocode, loading } = useMapboxApi();
 
   // Get user's current location
   useEffect(() => {
@@ -30,8 +32,8 @@ const Index = () => {
             lat: position.coords.latitude,
             lng: position.coords.longitude
           };
+          setUserLocation(coords);
           setOriginCoords(coords);
-          // Reverse geocode to get address
           reverseGeocodeLocation(coords, 'origin');
         },
         (error) => {
@@ -44,8 +46,7 @@ const Index = () => {
 
   const reverseGeocodeLocation = async (coords: { lat: number; lng: number }, type: 'origin' | 'destination') => {
     try {
-      const response = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${coords.lng},${coords.lat}.json?access_token=pk.mapbox.token&language=pt`);
-      const data = await response.json();
+      const data = await reverseGeocode(coords.lat, coords.lng);
       
       if (data.features && data.features.length > 0) {
         const address = data.features[0].place_name;
@@ -96,6 +97,17 @@ const Index = () => {
     setActiveSuggestions(null);
   };
 
+  const handleMapLocationSelect = async (coords: { lat: number; lng: number }) => {
+    if (selectingMode === 'origin') {
+      setOriginCoords(coords);
+      await reverseGeocodeLocation(coords, 'origin');
+    } else if (selectingMode === 'destination') {
+      setDestinationCoords(coords);
+      await reverseGeocodeLocation(coords, 'destination');
+    }
+    setSelectingMode(null);
+  };
+
   const handleCalculateRoute = async () => {
     if (!originCoords || !destinationCoords) {
       toast.error('Por favor, selecione origem e destino');
@@ -124,7 +136,6 @@ const Index = () => {
       return;
     }
 
-    // Here we would implement the ride request logic
     toast.success('Funcionalidade de solicitação será implementada em breve');
   };
 
@@ -153,7 +164,7 @@ const Index = () => {
       </div>
 
       <div className="container mx-auto px-4 py-8">
-        <div className="max-w-2xl mx-auto space-y-6">
+        <div className="max-w-4xl mx-auto space-y-6">
           {/* Welcome Card */}
           <Card className="bg-gradient-to-r from-blue-600 to-green-600 text-white">
             <CardContent className="p-6">
@@ -164,145 +175,198 @@ const Index = () => {
             </CardContent>
           </Card>
 
-          {/* Route Planning Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Navigation className="h-5 w-5 text-blue-600" />
-                <span>Solicitar Transporte</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Origin Input */}
-              <div className="relative">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Local de Partida
-                </label>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-3 h-4 w-4 text-green-600" />
-                  <Input
-                    placeholder="Digite seu endereço de partida"
-                    value={originAddress}
-                    onChange={(e) => {
-                      setOriginAddress(e.target.value);
-                      handleAddressSearch(e.target.value, 'origin');
-                    }}
-                    className="pl-10"
-                  />
-                </div>
-                
-                {activeSuggestions === 'origin' && suggestions.length > 0 && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
-                    {suggestions.map((suggestion, index) => (
-                      <div
-                        key={index}
-                        className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
-                        onClick={() => handleSuggestionSelect(suggestion, 'origin')}
-                      >
-                        <div className="flex items-start space-x-2">
-                          <MapPin className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">
-                              {suggestion.text}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              {suggestion.place_name}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Destination Input */}
-              <div className="relative">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Local de Destino
-                </label>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-3 h-4 w-4 text-red-600" />
-                  <Input
-                    placeholder="Hospital, clínica ou endereço de destino"
-                    value={destinationAddress}
-                    onChange={(e) => {
-                      setDestinationAddress(e.target.value);
-                      handleAddressSearch(e.target.value, 'destination');
-                    }}
-                    className="pl-10"
-                  />
-                </div>
-                
-                {activeSuggestions === 'destination' && suggestions.length > 0 && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
-                    {suggestions.map((suggestion, index) => (
-                      <div
-                        key={index}
-                        className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
-                        onClick={() => handleSuggestionSelect(suggestion, 'destination')}
-                      >
-                        <div className="flex items-start space-x-2">
-                          <MapPin className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">
-                              {suggestion.text}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              {suggestion.place_name}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Calculate Route Button */}
-              <Button 
-                onClick={handleCalculateRoute}
-                disabled={!originCoords || !destinationCoords || loading}
-                className="w-full bg-blue-600 hover:bg-blue-700"
-              >
-                {loading ? 'Calculando...' : 'Calcular Rota'}
-              </Button>
-
-              {/* Route Information */}
-              {routeInfo && routeInfo.routes && routeInfo.routes.length > 0 && (
-                <div className="bg-gray-50 rounded-lg p-4 space-y-3">
-                  <h3 className="font-semibold text-gray-900">Informações da Rota</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="flex items-center space-x-2">
-                      <Navigation className="h-4 w-4 text-blue-600" />
-                      <div>
-                        <p className="text-xs text-gray-500">Distância</p>
-                        <p className="font-semibold">
-                          {(routeInfo.routes[0].distance / 1000).toFixed(1)} km
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Clock className="h-4 w-4 text-green-600" />
-                      <div>
-                        <p className="text-xs text-gray-500">Tempo Estimado</p>
-                        <p className="font-semibold">
-                          {Math.round(routeInfo.routes[0].duration / 60)} min
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <Button 
-                    onClick={handleRequestRide}
-                    className="w-full bg-green-600 hover:bg-green-700"
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Route Planning Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Navigation className="h-5 w-5 text-blue-600" />
+                  <span>Solicitar Transporte</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Location Selection Buttons */}
+                <div className="grid grid-cols-2 gap-2 mb-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => setSelectingMode('origin')}
+                    className={`text-sm ${selectingMode === 'origin' ? 'bg-green-50 border-green-500' : ''}`}
                   >
-                    Solicitar Transporte Gratuito
+                    <MapPin className="h-4 w-4 mr-1 text-green-600" />
+                    Escolher Origem
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setSelectingMode('destination')}
+                    className={`text-sm ${selectingMode === 'destination' ? 'bg-red-50 border-red-500' : ''}`}
+                  >
+                    <MapPin className="h-4 w-4 mr-1 text-red-600" />
+                    Escolher Destino
                   </Button>
                 </div>
-              )}
-            </CardContent>
-          </Card>
+
+                {/* Origin Input */}
+                <div className="relative">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Local de Partida
+                  </label>
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-3 h-4 w-4 text-green-600" />
+                    <Input
+                      placeholder="Digite seu endereço de partida"
+                      value={originAddress}
+                      onChange={(e) => {
+                        setOriginAddress(e.target.value);
+                        handleAddressSearch(e.target.value, 'origin');
+                      }}
+                      className="pl-10"
+                    />
+                  </div>
+                  
+                  {activeSuggestions === 'origin' && suggestions.length > 0 && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
+                      {suggestions.map((suggestion, index) => (
+                        <div
+                          key={index}
+                          className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                          onClick={() => handleSuggestionSelect(suggestion, 'origin')}
+                        >
+                          <div className="flex items-start space-x-2">
+                            <MapPin className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">
+                                {suggestion.text}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {suggestion.place_name}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Destination Input */}
+                <div className="relative">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Local de Destino
+                  </label>
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-3 h-4 w-4 text-red-600" />
+                    <Input
+                      placeholder="Hospital, clínica ou endereço de destino"
+                      value={destinationAddress}
+                      onChange={(e) => {
+                        setDestinationAddress(e.target.value);
+                        handleAddressSearch(e.target.value, 'destination');
+                      }}
+                      className="pl-10"
+                    />
+                  </div>
+                  
+                  {activeSuggestions === 'destination' && suggestions.length > 0 && (
+                    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
+                      {suggestions.map((suggestion, index) => (
+                        <div
+                          key={index}
+                          className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                          onClick={() => handleSuggestionSelect(suggestion, 'destination')}
+                        >
+                          <div className="flex items-start space-x-2">
+                            <MapPin className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">
+                                {suggestion.text}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {suggestion.place_name}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Map Toggle Button */}
+                <Button 
+                  onClick={() => setShowMap(!showMap)}
+                  variant="outline" 
+                  className="w-full"
+                >
+                  <Map className="h-4 w-4 mr-2" />
+                  {showMap ? 'Ocultar Mapa' : 'Mostrar Mapa'}
+                </Button>
+
+                {/* Calculate Route Button */}
+                <Button 
+                  onClick={handleCalculateRoute}
+                  disabled={!originCoords || !destinationCoords || loading}
+                  className="w-full bg-blue-600 hover:bg-blue-700"
+                >
+                  {loading ? 'Calculando...' : 'Calcular Rota'}
+                </Button>
+
+                {/* Route Information */}
+                {routeInfo && routeInfo.routes && routeInfo.routes.length > 0 && (
+                  <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                    <h3 className="font-semibold text-gray-900">Informações da Rota</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="flex items-center space-x-2">
+                        <Navigation className="h-4 w-4 text-blue-600" />
+                        <div>
+                          <p className="text-xs text-gray-500">Distância</p>
+                          <p className="font-semibold">
+                            {(routeInfo.routes[0].distance / 1000).toFixed(1)} km
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Clock className="h-4 w-4 text-green-600" />
+                        <div>
+                          <p className="text-xs text-gray-500">Tempo Estimado</p>
+                          <p className="font-semibold">
+                            {Math.round(routeInfo.routes[0].duration / 60)} min
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <Button 
+                      onClick={handleRequestRide}
+                      className="w-full bg-green-600 hover:bg-green-700"
+                    >
+                      Solicitar Transporte Gratuito
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Map Card */}
+            <Card className={showMap ? '' : 'hidden md:block'}>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Map className="h-5 w-5 text-blue-600" />
+                  <span>Mapa Interativo</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <SecureMapboxComponent
+                  origin={originCoords}
+                  destination={destinationCoords}
+                  center={userLocation}
+                  zoom={13}
+                  className="h-96"
+                  onLocationSelect={handleMapLocationSelect}
+                  selectingMode={selectingMode}
+                />
+              </CardContent>
+            </Card>
+          </div>
 
           {/* Emergency Contact Card */}
           <Card className="border-orange-200 bg-orange-50">
