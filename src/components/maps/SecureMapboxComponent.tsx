@@ -40,7 +40,7 @@ const SecureMapboxComponent = ({
   const [mapboxToken, setMapboxToken] = useState<string>('');
   const [isLoadingToken, setIsLoadingToken] = useState(true);
   const [tokenError, setTokenError] = useState<string>('');
-  const { reverseGeocode } = useMapboxApi();
+  const { calculateRoute } = useMapboxApi();
 
   // Get Mapbox token from API
   useEffect(() => {
@@ -163,7 +163,57 @@ const SecureMapboxComponent = ({
     });
   }, [origin, destination, drivers]);
 
-  // Fit map to show all markers
+  // Draw route when both origin and destination are available
+  useEffect(() => {
+    if (!map.current || !origin || !destination) return;
+
+    const drawRoute = async () => {
+      try {
+        const routeData = await calculateRoute(origin, destination);
+        
+        if (routeData.routes && routeData.routes[0]) {
+          const route = routeData.routes[0];
+          
+          // Remove existing route if it exists
+          if (map.current!.getSource('route')) {
+            map.current!.removeLayer('route');
+            map.current!.removeSource('route');
+          }
+          
+          // Add route source and layer
+          map.current!.addSource('route', {
+            type: 'geojson',
+            data: {
+              type: 'Feature',
+              properties: {},
+              geometry: route.geometry
+            }
+          });
+          
+          map.current!.addLayer({
+            id: 'route',
+            type: 'line',
+            source: 'route',
+            layout: {
+              'line-join': 'round',
+              'line-cap': 'round'
+            },
+            paint: {
+              'line-color': '#3B82F6',
+              'line-width': 5,
+              'line-opacity': 0.8
+            }
+          });
+        }
+      } catch (error) {
+        console.error('Erro ao calcular rota:', error);
+      }
+    };
+
+    drawRoute();
+  }, [origin, destination, calculateRoute]);
+
+  // Fit map to show all markers and route
   useEffect(() => {
     if (!map.current || (!origin && !destination && drivers.length === 0)) return;
 
@@ -216,7 +266,7 @@ const SecureMapboxComponent = ({
     <div className={`relative ${className}`}>
       <div ref={mapContainer} className="w-full h-full rounded-lg" />
       {selectingMode && (
-        <div className="absolute top-4 left-4 bg-white px-3 py-2 rounded-lg shadow-lg">
+        <div className="absolute top-4 left-4 bg-white px-3 py-2 rounded-lg shadow-lg z-10">
           <p className="text-sm font-medium text-gray-700">
             {selectingMode === 'origin' ? 'Clique no mapa para escolher a origem' : 'Clique no mapa para escolher o destino'}
           </p>

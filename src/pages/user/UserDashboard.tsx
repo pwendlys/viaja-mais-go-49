@@ -1,15 +1,20 @@
-
 import React, { useState } from 'react';
 import { MapPin, Clock, User, History, Settings, Calendar, Heart, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
-import RideRequest from '@/components/RideRequest';
+import ImprovedRideRequest from '@/components/ImprovedRideRequest';
 import RideStatus from '@/components/RideStatus';
 import UserHeader from '@/components/user/UserHeader';
 import MapView from '@/components/MapView';
 import { useUserProfile } from '@/hooks/useUserProfile';
+
+interface Location {
+  lat: number;
+  lng: number;
+  address: string;
+}
 
 const UserDashboard = () => {
   const [rideState, setRideState] = useState<'idle' | 'searching' | 'driver-assigned' | 'driver-arriving' | 'in-transit' | 'completed'>('idle');
@@ -83,14 +88,13 @@ const UserDashboard = () => {
 
   const handleSelectHealthFacility = (facility: any) => {
     setSelectedDestination(facility.address);
-    // Scroll to the ride request component
     const rideRequestElement = document.getElementById('ride-request-section');
     if (rideRequestElement) {
       rideRequestElement.scrollIntoView({ behavior: 'smooth' });
     }
   };
 
-  const handleRouteChange = (origin: {lat: number, lng: number} | null, destination: {lat: number, lng: number} | null) => {
+  const handleRouteChange = (origin: Location | null, destination: Location | null) => {
     setRouteOrigin(origin);
     setRouteDestination(destination);
   };
@@ -174,7 +178,7 @@ const UserDashboard = () => {
 
             <div id="ride-request-section" className="flex justify-center">
               {rideState === 'idle' ? (
-                <RideRequest 
+                <ImprovedRideRequest 
                   onRequestRide={handleRequestRide} 
                   prefilledDestination={selectedDestination}
                   onRouteChange={handleRouteChange}
