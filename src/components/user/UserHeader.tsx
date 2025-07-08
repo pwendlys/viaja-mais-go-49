@@ -3,6 +3,7 @@ import React from 'react';
 import { User, Bell, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link, useNavigate } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 
 interface UserHeaderProps {
   user: {
@@ -17,7 +18,8 @@ interface UserHeaderProps {
 const UserHeader = ({ user }: UserHeaderProps) => {
   const navigate = useNavigate();
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     navigate('/');
   };
 

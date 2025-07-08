@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { MapPin, Clock, User, History, Settings, Calendar, Heart } from 'lucide-react';
+import { MapPin, Clock, User, History, Settings, Calendar, Heart, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -9,18 +9,11 @@ import RideRequest from '@/components/RideRequest';
 import RideStatus from '@/components/RideStatus';
 import UserHeader from '@/components/user/UserHeader';
 import MapView from '@/components/MapView';
+import { useUserProfile } from '@/hooks/useUserProfile';
 
 const UserDashboard = () => {
   const [rideState, setRideState] = useState<'idle' | 'searching' | 'driver-assigned' | 'driver-arriving' | 'in-transit' | 'completed'>('idle');
-
-  // User data - will come from database
-  const userData = {
-    name: 'Maria Silva',
-    email: 'maria.silva@email.com',
-    rating: 4.8,
-    totalTrips: 12,
-    memberSince: '2023'
-  };
+  const { userProfile, loading, error } = useUserProfile();
 
   // Mock drivers for demonstration
   const mockDrivers = [
@@ -54,6 +47,39 @@ const UserDashboard = () => {
 
   const handleRateRide = (rating: number) => {
     setRideState('idle');
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="flex items-center space-x-2">
+          <Loader2 className="h-6 w-6 animate-spin" />
+          <span>Carregando dados do usuário...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !userProfile) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">{error || 'Erro ao carregar dados'}</p>
+          <Button onClick={() => window.location.reload()}>
+            Tentar Novamente
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Preparar dados do usuário para o header
+  const userData = {
+    name: userProfile.profile.full_name,
+    email: '', // Email não está sendo retornado da API
+    rating: userProfile.stats.rating || 0,
+    totalTrips: userProfile.stats.totalTrips,
+    memberSince: new Date(userProfile.profile.created_at).getFullYear().toString()
   };
 
   return (
@@ -123,17 +149,30 @@ const UserDashboard = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Avaliação</span>
-                  <div className="flex items-center space-x-1">
-                    <span className="font-semibold">{userData.rating}</span>
-                    <span className="text-yellow-500">⭐</span>
+                {userProfile.stats.hasRating ? (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Avaliação</span>
+                    <div className="flex items-center space-x-1">
+                      <span className="font-semibold">{userProfile.stats.rating}</span>
+                      <span className="text-yellow-500">⭐</span>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Avaliação</span>
+                    <span className="text-gray-400 text-sm">Nenhuma avaliação ainda</span>
+                  </div>
+                )}
+                
                 <div className="flex justify-between">
                   <span className="text-gray-600">Transportes</span>
-                  <Badge variant="secondary">{userData.totalTrips}</Badge>
+                  {userProfile.stats.totalTrips > 0 ? (
+                    <Badge variant="secondary">{userProfile.stats.totalTrips}</Badge>
+                  ) : (
+                    <span className="text-gray-400 text-sm">Nenhum transporte ainda</span>
+                  )}
                 </div>
+                
                 <div className="flex justify-between">
                   <span className="text-gray-600">Usuário desde</span>
                   <span className="font-semibold">{userData.memberSince}</span>
@@ -198,8 +237,18 @@ const UserDashboard = () => {
               <CardContent>
                 <div className="text-center py-8">
                   <MapPin className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                  <p className="text-gray-500 text-sm">Nenhum transporte recente</p>
-                  <p className="text-gray-400 text-xs">Seus transportes aparecerão aqui</p>
+                  <p className="text-gray-500 text-sm">
+                    {userProfile.stats.totalTrips > 0 
+                      ? 'Carregando transportes recentes...' 
+                      : 'Nenhum transporte recente'
+                    }
+                  </p>
+                  <p className="text-gray-400 text-xs">
+                    {userProfile.stats.totalTrips === 0 
+                      ? 'Seus transportes aparecerão aqui' 
+                      : ''
+                    }
+                  </p>
                 </div>
               </CardContent>
             </Card>
