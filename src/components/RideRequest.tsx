@@ -20,9 +20,10 @@ interface VehicleOption {
 
 interface RideRequestProps {
   onRequestRide: (vehicleType: string, pickup: string, destination: string) => void;
+  prefilledDestination?: string;
 }
 
-const RideRequest = ({ onRequestRide }: RideRequestProps) => {
+const RideRequest = ({ onRequestRide, prefilledDestination }: RideRequestProps) => {
   const [pickup, setPickup] = useState('');
   const [destination, setDestination] = useState('');
   const [selectedVehicle, setSelectedVehicle] = useState<string>('');
@@ -31,6 +32,14 @@ const RideRequest = ({ onRequestRide }: RideRequestProps) => {
   const [destinationCoords, setDestinationCoords] = useState<{lat: number, lng: number} | null>(null);
   const [needsWheelchairAccess, setNeedsWheelchairAccess] = useState(false);
   const { calculateRoute, loading } = useMapboxApi();
+
+  // Set prefilled destination when provided
+  useEffect(() => {
+    if (prefilledDestination && prefilledDestination !== destination) {
+      setDestination(prefilledDestination);
+      toast.success('Destino selecionado automaticamente!');
+    }
+  }, [prefilledDestination]);
 
   // Calculate route when both coordinates are available
   useEffect(() => {

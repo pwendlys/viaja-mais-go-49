@@ -13,6 +13,7 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 
 const UserDashboard = () => {
   const [rideState, setRideState] = useState<'idle' | 'searching' | 'driver-assigned' | 'driver-arriving' | 'in-transit' | 'completed'>('idle');
+  const [selectedDestination, setSelectedDestination] = useState<string>('');
   const { userProfile, loading, error } = useUserProfile();
 
   // Mock drivers for demonstration
@@ -35,6 +36,35 @@ const UserDashboard = () => {
     }
   ];
 
+  // Principais hospitais de Juiz de Fora
+  const healthFacilities = [
+    {
+      name: 'Hospital Monte Sinai',
+      address: 'Av. Barão do Rio Branco, 3596 - Passos, Juiz de Fora - MG',
+      type: 'Hospital Privado'
+    },
+    {
+      name: 'Hospital e Maternidade Therezinha de Jesus',
+      address: 'Rua Cel. Antônio Augusto de Carvalho, 1 - São Mateus, Juiz de Fora - MG',
+      type: 'Hospital Privado'
+    },
+    {
+      name: 'Hospital Regional João Penido (HU-UFJF)',
+      address: 'Rua José Lourenço Kelmer, s/n - São Pedro, Juiz de Fora - MG',
+      type: 'Hospital Universitário'
+    },
+    {
+      name: 'Hospital Municipal (UPA Leste)',
+      address: 'Rua Francisco Valadares, 1000 - Linhares, Juiz de Fora - MG',
+      type: 'Hospital Municipal'
+    },
+    {
+      name: 'Hospital Policlínica de Juiz de Fora',
+      address: 'Av. Independência, 2500 - Centro, Juiz de Fora - MG',
+      type: 'Hospital Privado'
+    }
+  ];
+
   const handleRequestRide = (vehicleType: string, pickup: string, destination: string) => {
     setRideState('searching');
     // In real app, this would connect to database
@@ -47,6 +77,15 @@ const UserDashboard = () => {
 
   const handleRateRide = (rating: number) => {
     setRideState('idle');
+  };
+
+  const handleSelectHealthFacility = (facility: any) => {
+    setSelectedDestination(facility.address);
+    // Scroll to the ride request component
+    const rideRequestElement = document.getElementById('ride-request-section');
+    if (rideRequestElement) {
+      rideRequestElement.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   if (loading) {
@@ -124,9 +163,12 @@ const UserDashboard = () => {
               </CardContent>
             </Card>
 
-            <div className="flex justify-center">
+            <div id="ride-request-section" className="flex justify-center">
               {rideState === 'idle' ? (
-                <RideRequest onRequestRide={handleRequestRide} />
+                <RideRequest 
+                  onRequestRide={handleRequestRide} 
+                  prefilledDestination={selectedDestination}
+                />
               ) : (
                 <RideStatus
                   status={rideState}
@@ -210,19 +252,34 @@ const UserDashboard = () => {
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
                   <Heart className="h-5 w-5" />
-                  <span>Serviços de Saúde</span>
+                  <span>Principais Hospitais</span>
                 </CardTitle>
+                <p className="text-xs text-gray-500">Clique para definir como destino</p>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="text-sm text-gray-600">
-                  <p className="mb-2">Principais destinos:</p>
-                  <ul className="space-y-1">
-                    <li>• Hospital Municipal</li>
-                    <li>• UPA Centro</li>
-                    <li>• Policlínica Central</li>
-                    <li>• Centro de Especialidades</li>
-                  </ul>
-                </div>
+              <CardContent className="space-y-2">
+                {healthFacilities.map((facility, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleSelectHealthFacility(facility)}
+                    className="w-full text-left p-3 rounded-lg border border-gray-200 hover:border-viaja-blue hover:bg-gradient-viaja-subtle transition-all duration-200 group"
+                  >
+                    <div className="flex items-start space-x-3">
+                      <div className="w-2 h-2 bg-viaja-blue rounded-full mt-2 group-hover:bg-viaja-orange transition-colors"></div>
+                      <div className="flex-1">
+                        <h4 className="font-medium text-gray-800 text-sm group-hover:text-viaja-blue transition-colors">
+                          {facility.name}
+                        </h4>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {facility.type}
+                        </p>
+                        <p className="text-xs text-gray-400 mt-1 line-clamp-2">
+                          {facility.address}
+                        </p>
+                      </div>
+                      <MapPin className="h-4 w-4 text-gray-400 group-hover:text-viaja-blue transition-colors" />
+                    </div>
+                  </button>
+                ))}
               </CardContent>
             </Card>
 
