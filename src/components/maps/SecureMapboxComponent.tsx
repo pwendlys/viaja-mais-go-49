@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { useMapboxApi } from '@/hooks/useMapboxApi';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Driver {
   id: string;
@@ -37,16 +38,33 @@ const SecureMapboxComponent = ({
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const [mapboxToken, setMapboxToken] = useState<string>('');
+  const [isLoadingToken, setIsLoadingToken] = useState(true);
+  const [tokenError, setTokenError] = useState<string>('');
   const { reverseGeocode } = useMapboxApi();
 
   // Get Mapbox token from API
   useEffect(() => {
     const fetchToken = async () => {
       try {
-        // Token will be handled by the edge function
-        setMapboxToken('pk.temp.token'); // Placeholder, real token handled by backend
+        setIsLoadingToken(true);
+        setTokenError('');
+        
+        const { data, error } = await supabase.functions.invoke('mapbox-token');
+        
+        if (error) {
+          throw new Error(error.message);
+        }
+        
+        if (data && data.token) {
+          setMapboxToken(data.token);
+        } else {
+          throw new Error('Token não recebido');
+        }
       } catch (error) {
         console.error('Error loading Mapbox token:', error);
+        setTokenError('Erro ao carregar token do Mapbox');
+      } finally {
+        setIsLoadingToken(false);
       }
     };
 
@@ -54,11 +72,10 @@ const SecureMapboxComponent = ({
   }, []);
 
   useEffect(() => {
-    if (!mapContainer.current || !mapboxToken) return;
+    if (!mapContainer.current || !mapboxToken || isLoadingToken) return;
 
-    // Set a placeholder token for the map initialization
-    // The actual API calls will go through our secure backend
-    mapboxgl.accessToken = 'pk.eyJ1IjoidmlhamFtYWlzIiwiYSI6ImNtNWJsaTNlczAyNW0yanB6NTl4YTFzcGcifQ.dummy';
+    // Set the valid token for map initialization
+    mapboxgl.accessToken = mapboxToken;
 
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
@@ -103,7 +120,7 @@ const SecureMapboxComponent = ({
     return () => {
       map.current?.remove();
     };
-  }, [mapboxToken, center.lat, center.lng, zoom, selectingMode, onLocationSelect]);
+  }, [mapboxToken, isLoadingToken, center.lat, center.lng, zoom, selectingMode, onLocationSelect]);
 
   // Add markers for origin and destination
   useEffect(() => {
@@ -166,6 +183,34 @@ const SecureMapboxComponent = ({
       });
     }
   }, [origin, destination, drivers]);
+
+  // Show loading state
+  if (isLoadingToken) {
+    return (
+      <div className={`relative ${className}`}>
+        <div className="w-full h-full rounded-lg bg-gray-100 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+            <p className="text-sm text-gray-600">Carregando mapa...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (tokenError) {
+    return (
+      <div className={`relative ${className}`}>
+        <div className="w-full h-full rounded-lg bg-red-50 border border-red-200 flex items-center justify-center">
+          <div className="text-center p-4">
+            <p className="text-sm text-red-600 mb-2">Erro ao carregar o mapa</p>
+            <p className="text-xs text-red-500">{tokenError}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`relative ${className}`}>
