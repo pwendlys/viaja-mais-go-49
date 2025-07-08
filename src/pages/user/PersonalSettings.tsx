@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, Phone, MapPin, Heart, AlertCircle, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,33 +9,108 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import UserHeader from '@/components/user/UserHeader';
 import { toast } from 'sonner';
+import { useUserProfile } from '@/hooks/useUserProfile';
+import { healthTransportApi } from '@/services/healthTransportApi';
+import { supabase } from '@/integrations/supabase/client';
 
 const PersonalSettings = () => {
+  const { userProfile, loading, refetch } = useUserProfile();
+  const [saving, setSaving] = useState(false);
+  
   const [personalData, setPersonalData] = useState({
-    fullName: 'Maria Silva',
-    phone: '(32) 99999-9999',
-    address: 'Rua das Flores, 123',
-    neighborhood: 'Centro',
-    city: 'Juiz de Fora',
-    state: 'MG',
-    susNumber: '123456789012345',
+    fullName: '',
+    phone: '',
+    address: '',
+    neighborhood: '',
+    city: '',
+    state: '',
+    susNumber: '',
     medicalCondition: '',
     mobilityNeeds: '',
     emergencyContactName: '',
     emergencyContactPhone: ''
   });
 
-  const userData = {
-    name: 'Maria Silva',
-    email: 'maria.silva@email.com',
-    rating: 4.8,
-    totalTrips: 47,
-    memberSince: '2023'
+  // Atualizar dados quando o perfil do usuário for carregado
+  useEffect(() => {
+    if (userProfile) {
+      setPersonalData({
+        fullName: userProfile.profile.full_name || '',
+        phone: userProfile.profile.phone || '',
+        address: userProfile.patientData?.address || '',
+        neighborhood: userProfile.patientData?.neighborhood || '',
+        city: userProfile.patientData?.city || '',
+        state: userProfile.patientData?.state || '',
+        susNumber: userProfile.patientData?.sus_number || '',
+        medicalCondition: userProfile.patientData?.medical_condition || '',
+        mobilityNeeds: userProfile.patientData?.mobility_needs || '',
+        emergencyContactName: userProfile.patientData?.emergency_contact_name || '',
+        emergencyContactPhone: userProfile.patientData?.emergency_contact_phone || ''
+      });
+    }
+  }, [userProfile]);
+
+  const userData = userProfile ? {
+    name: userProfile.profile.full_name,
+    email: '', // Email vem do auth, se necessário pode ser buscado
+    rating: userProfile.stats.rating || 0,
+    totalTrips: userProfile.stats.totalTrips,
+    memberSince: new Date(userProfile.profile.created_at).getFullYear().toString()
+  } : {
+    name: '',
+    email: '',
+    rating: 0,
+    totalTrips: 0,
+    memberSince: ''
   };
 
-  const handleSave = () => {
-    // Aqui seria feita a chamada para salvar os dados no banco
-    toast.success('Dados pessoais atualizados com sucesso!');
+  const handleSave = async () => {
+    if (!userProfile) return;
+    
+    try {
+      setSaving(true);
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Usuário não encontrado');
+
+      // Atualizar dados do perfil
+      const profileData = {
+        full_name: personalData.fullName,
+        phone: personalData.phone
+      };
+
+      // Atualizar dados específicos do paciente
+      const patientData = {
+        address: personalData.address,
+        neighborhood: personalData.neighborhood,
+        city: personalData.city,
+        state: personalData.state,
+        sus_number: personalData.susNumber,
+        medical_condition: personalData.medicalCondition,
+        mobility_needs: personalData.mobilityNeeds,
+        emergency_contact_name: personalData.emergencyContactName,
+        emergency_contact_phone: personalData.emergencyContactPhone
+      };
+
+      // Usar a API para atualizar o perfil
+      await healthTransportApi.completeProfile(
+        user.id,
+        'patient',
+        profileData,
+        patientData
+      );
+
+      toast.success('Dados pessoais atualizados com sucesso!');
+      
+      // Recarregar os dados do perfil
+      await refetch();
+      
+    } catch (error) {
+      console.error('Erro ao salvar dados:', error);
+      toast.error('Erro ao salvar dados. Tente novamente.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -44,6 +119,17 @@ const PersonalSettings = () => {
       [field]: value
     }));
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-viaja-blue mx-auto mb-4"></div>
+          <p>Carregando dados...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -54,9 +140,13 @@ const PersonalSettings = () => {
           {/* Header */}
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-gray-800">Configurações Pessoais</h1>
-            <Button className="gradient-viaja text-white" onClick={handleSave}>
+            <Button 
+              className="gradient-viaja text-white" 
+              onClick={handleSave}
+              disabled={saving}
+            >
               <Save className="h-4 w-4 mr-2" />
-              Salvar Alterações
+              {saving ? 'Salvando...' : 'Salvar Alterações'}
             </Button>
           </div>
 
