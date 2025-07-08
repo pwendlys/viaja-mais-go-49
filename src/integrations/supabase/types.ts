@@ -198,6 +198,39 @@ export type Database = {
           },
         ]
       }
+      pricing_config: {
+        Row: {
+          base_fare: number
+          created_at: string
+          id: string
+          is_active: boolean
+          per_minute_rate: number
+          price_per_km: number
+          updated_at: string
+          vehicle_type: string
+        }
+        Insert: {
+          base_fare?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          per_minute_rate?: number
+          price_per_km?: number
+          updated_at?: string
+          vehicle_type?: string
+        }
+        Update: {
+          base_fare?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          per_minute_rate?: number
+          price_per_km?: number
+          updated_at?: string
+          vehicle_type?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -231,9 +264,38 @@ export type Database = {
         }
         Relationships: []
       }
+      ride_categories: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          priority_level: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          priority_level?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          priority_level?: number
+        }
+        Relationships: []
+      }
       rides: {
         Row: {
           appointment_date: string | null
+          appointment_type: string | null
+          category_id: string | null
           completed_at: string | null
           created_at: string | null
           destination_address: string
@@ -245,6 +307,7 @@ export type Database = {
           duration_minutes: number | null
           facility_id: string | null
           id: string
+          medical_notes: string | null
           notes: string | null
           origin_address: string
           origin_lat: number
@@ -257,6 +320,8 @@ export type Database = {
         }
         Insert: {
           appointment_date?: string | null
+          appointment_type?: string | null
+          category_id?: string | null
           completed_at?: string | null
           created_at?: string | null
           destination_address: string
@@ -268,6 +333,7 @@ export type Database = {
           duration_minutes?: number | null
           facility_id?: string | null
           id?: string
+          medical_notes?: string | null
           notes?: string | null
           origin_address: string
           origin_lat: number
@@ -280,6 +346,8 @@ export type Database = {
         }
         Update: {
           appointment_date?: string | null
+          appointment_type?: string | null
+          category_id?: string | null
           completed_at?: string | null
           created_at?: string | null
           destination_address?: string
@@ -291,6 +359,7 @@ export type Database = {
           duration_minutes?: number | null
           facility_id?: string | null
           id?: string
+          medical_notes?: string | null
           notes?: string | null
           origin_address?: string
           origin_lat?: number
@@ -302,6 +371,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "rides_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "ride_categories"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "rides_driver_id_fkey"
             columns: ["driver_id"]
