@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { DollarSign, Save, Plus, Edit, Trash2, Car, Clock, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -32,6 +31,13 @@ const PricingConfig = () => {
     base_fare: 0,
     per_minute_rate: 0
   });
+
+  // Mock admin data
+  const mockAdmin = {
+    name: 'Admin Municipal',
+    email: 'admin@prefeitura.gov.br',
+    role: 'Administrador'
+  };
 
   // Mock data - in real app, this would come from Supabase
   useEffect(() => {
@@ -134,7 +140,7 @@ const PricingConfig = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <AdminHeader />
+      <AdminHeader admin={mockAdmin} />
       
       <div className="container mx-auto px-4 py-6 max-w-6xl">
         <div className="space-y-6">
