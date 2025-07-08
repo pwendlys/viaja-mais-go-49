@@ -14,7 +14,317 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      drivers: {
+        Row: {
+          current_lat: number | null
+          current_lng: number | null
+          id: string
+          is_available: boolean | null
+          license_expiry: string
+          license_number: string
+          rating: number | null
+          total_rides: number | null
+          vehicle_color: string | null
+          vehicle_model: string
+          vehicle_plate: string
+          vehicle_year: number | null
+        }
+        Insert: {
+          current_lat?: number | null
+          current_lng?: number | null
+          id: string
+          is_available?: boolean | null
+          license_expiry: string
+          license_number: string
+          rating?: number | null
+          total_rides?: number | null
+          vehicle_color?: string | null
+          vehicle_model: string
+          vehicle_plate: string
+          vehicle_year?: number | null
+        }
+        Update: {
+          current_lat?: number | null
+          current_lng?: number | null
+          id?: string
+          is_available?: boolean | null
+          license_expiry?: string
+          license_number?: string
+          rating?: number | null
+          total_rides?: number | null
+          vehicle_color?: string | null
+          vehicle_model?: string
+          vehicle_plate?: string
+          vehicle_year?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drivers_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      health_facilities: {
+        Row: {
+          address: string
+          created_at: string | null
+          facility_type: string
+          id: string
+          is_active: boolean | null
+          lat: number
+          lng: number
+          name: string
+          phone: string | null
+        }
+        Insert: {
+          address: string
+          created_at?: string | null
+          facility_type: string
+          id?: string
+          is_active?: boolean | null
+          lat: number
+          lng: number
+          name: string
+          phone?: string | null
+        }
+        Update: {
+          address?: string
+          created_at?: string | null
+          facility_type?: string
+          id?: string
+          is_active?: boolean | null
+          lat?: number
+          lng?: number
+          name?: string
+          phone?: string | null
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_read: boolean | null
+          message: string
+          ride_id: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          message: string
+          ride_id?: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          message?: string
+          ride_id?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "rides"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      patients: {
+        Row: {
+          address: string
+          city: string | null
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
+          id: string
+          medical_condition: string | null
+          mobility_needs: string | null
+          neighborhood: string | null
+          state: string | null
+          sus_number: string | null
+        }
+        Insert: {
+          address: string
+          city?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          id: string
+          medical_condition?: string | null
+          mobility_needs?: string | null
+          neighborhood?: string | null
+          state?: string | null
+          sus_number?: string | null
+        }
+        Update: {
+          address?: string
+          city?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          id?: string
+          medical_condition?: string | null
+          mobility_needs?: string | null
+          neighborhood?: string | null
+          state?: string | null
+          sus_number?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patients_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          full_name: string
+          id: string
+          is_active: boolean | null
+          phone: string | null
+          updated_at: string | null
+          user_type: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          full_name: string
+          id: string
+          is_active?: boolean | null
+          phone?: string | null
+          updated_at?: string | null
+          user_type: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          full_name?: string
+          id?: string
+          is_active?: boolean | null
+          phone?: string | null
+          updated_at?: string | null
+          user_type?: string
+        }
+        Relationships: []
+      }
+      rides: {
+        Row: {
+          appointment_date: string | null
+          completed_at: string | null
+          created_at: string | null
+          destination_address: string
+          destination_lat: number
+          destination_lng: number
+          distance_km: number | null
+          driver_id: string | null
+          driver_rating: number | null
+          duration_minutes: number | null
+          facility_id: string | null
+          id: string
+          notes: string | null
+          origin_address: string
+          origin_lat: number
+          origin_lng: number
+          patient_id: string
+          patient_rating: number | null
+          price: number | null
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          appointment_date?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          destination_address: string
+          destination_lat: number
+          destination_lng: number
+          distance_km?: number | null
+          driver_id?: string | null
+          driver_rating?: number | null
+          duration_minutes?: number | null
+          facility_id?: string | null
+          id?: string
+          notes?: string | null
+          origin_address: string
+          origin_lat: number
+          origin_lng: number
+          patient_id: string
+          patient_rating?: number | null
+          price?: number | null
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          appointment_date?: string | null
+          completed_at?: string | null
+          created_at?: string | null
+          destination_address?: string
+          destination_lat?: number
+          destination_lng?: number
+          distance_km?: number | null
+          driver_id?: string | null
+          driver_rating?: number | null
+          duration_minutes?: number | null
+          facility_id?: string | null
+          id?: string
+          notes?: string | null
+          origin_address?: string
+          origin_lat?: number
+          origin_lng?: number
+          patient_id?: string
+          patient_rating?: number | null
+          price?: number | null
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rides_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rides_facility_id_fkey"
+            columns: ["facility_id"]
+            isOneToOne: false
+            referencedRelation: "health_facilities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rides_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

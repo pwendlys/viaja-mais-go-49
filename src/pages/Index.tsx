@@ -1,333 +1,355 @@
 
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { LogIn, UserPlus, Car, Menu, User, MapPin, Navigation } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import RideStatus from '@/components/RideStatus';
-import UserProfile from '@/components/UserProfile';
-import SecureMapboxComponent from '@/components/maps/SecureMapboxComponent';
-import SecureMapboxAddressAutocomplete from '@/components/maps/SecureMapboxAddressAutocomplete';
+import { Badge } from '@/components/ui/badge';
+import { MapPin, Navigation, Clock, Phone, Plus } from 'lucide-react';
+import { useMapboxApi } from '@/hooks/useMapboxApi';
 import { toast } from 'sonner';
 
-type AppView = 'map' | 'profile';
-type RideState = 'idle' | 'searching' | 'driver-assigned' | 'driver-arriving' | 'in-transit' | 'completed';
-
 const Index = () => {
-  const [currentView, setCurrentView] = useState<AppView>('map');
-  const [rideState, setRideState] = useState<RideState>('idle');
-  const [showMenu, setShowMenu] = useState(false);
-  const [origin, setOrigin] = useState<{ lat: number; lng: number; address?: string } | null>(null);
-  const [destination, setDestination] = useState<{ lat: number; lng: number; address?: string } | null>(null);
   const [originAddress, setOriginAddress] = useState('');
   const [destinationAddress, setDestinationAddress] = useState('');
-  
-  // User data - will come from database
-  const userData = {
-    name: 'Usuário',
-    email: 'usuario@email.com',
-    rating: 0,
-    totalTrips: 0,
-    memberSince: '2024'
-  };
+  const [originCoords, setOriginCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [destinationCoords, setDestinationCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [routeInfo, setRouteInfo] = useState<any>(null);
+  const [isSelectingOrigin, setIsSelectingOrigin] = useState(false);
+  const [isSelectingDestination, setIsSelectingDestination] = useState(false);
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [activeSuggestions, setActiveSuggestions] = useState<'origin' | 'destination' | null>(null);
 
-  // Welcome toast effect
+  const { searchPlaces, calculateRoute, loading } = useMapboxApi();
+
+  // Get user's current location
   useEffect(() => {
-    const timer = setTimeout(() => {
-      toast.success('Bem-vindo ao Viaja+ 3D! 🌟', {
-        description: 'Escolha seus locais de partida e destino para solicitar uma corrida.'
-      });
-    }, 1000);
-
-    return () => clearTimeout(timer);
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const coords = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          };
+          setOriginCoords(coords);
+          // Reverse geocode to get address
+          reverseGeocodeLocation(coords, 'origin');
+        },
+        (error) => {
+          console.error('Error getting location:', error);
+          toast.error('Não foi possível obter sua localização');
+        }
+      );
+    }
   }, []);
 
-  const handleOriginSelect = (place: any) => {
-    if (place.coordinates) {
-      setOrigin({
-        lat: place.coordinates.lat,
-        lng: place.coordinates.lng,
-        address: place.description
-      });
-      setOriginAddress(place.description);
-      toast.success('📍 Local de partida definido!');
+  const reverseGeocodeLocation = async (coords: { lat: number; lng: number }, type: 'origin' | 'destination') => {
+    try {
+      const response = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${coords.lng},${coords.lat}.json?access_token=pk.mapbox.token&language=pt`);
+      const data = await response.json();
+      
+      if (data.features && data.features.length > 0) {
+        const address = data.features[0].place_name;
+        if (type === 'origin') {
+          setOriginAddress(address);
+        } else {
+          setDestinationAddress(address);
+        }
+      }
+    } catch (error) {
+      console.error('Error reverse geocoding:', error);
     }
   };
 
-  const handleDestinationSelect = (place: any) => {
-    if (place.coordinates) {
-      setDestination({
-        lat: place.coordinates.lat,
-        lng: place.coordinates.lng,
-        address: place.description
-      });
-      setDestinationAddress(place.description);
-      toast.success('🎯 Destino definido!');
+  const handleAddressSearch = async (query: string, type: 'origin' | 'destination') => {
+    if (!query.trim()) {
+      setSuggestions([]);
+      setActiveSuggestions(null);
+      return;
+    }
+
+    try {
+      const results = await searchPlaces(query);
+      if (results.features) {
+        setSuggestions(results.features.slice(0, 5));
+        setActiveSuggestions(type);
+      }
+    } catch (error) {
+      console.error('Error searching places:', error);
     }
   };
 
-  const handleMapClick = (location: { lat: number; lng: number }) => {
-    if (!origin) {
-      setOrigin({ ...location, address: `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}` });
-      setOriginAddress(`${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`);
-      toast.success('📍 Local de partida definido pelo mapa!');
-    } else if (!destination) {
-      setDestination({ ...location, address: `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}` });
-      setDestinationAddress(`${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`);
-      toast.success('🎯 Destino definido pelo mapa!');
+  const handleSuggestionSelect = (suggestion: any, type: 'origin' | 'destination') => {
+    const coords = {
+      lat: suggestion.geometry.coordinates[1],
+      lng: suggestion.geometry.coordinates[0]
+    };
+
+    if (type === 'origin') {
+      setOriginAddress(suggestion.place_name);
+      setOriginCoords(coords);
     } else {
-      // Reset and start over
-      setOrigin({ ...location, address: `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}` });
-      setOriginAddress(`${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`);
-      setDestination(null);
-      setDestinationAddress('');
-      toast.info('📍 Novo local de partida definido! Escolha o destino.');
+      setDestinationAddress(suggestion.place_name);
+      setDestinationCoords(coords);
+    }
+
+    setSuggestions([]);
+    setActiveSuggestions(null);
+  };
+
+  const handleCalculateRoute = async () => {
+    if (!originCoords || !destinationCoords) {
+      toast.error('Por favor, selecione origem e destino');
+      return;
+    }
+
+    try {
+      const route = await calculateRoute(originCoords, destinationCoords);
+      setRouteInfo(route);
+      
+      if (route.routes && route.routes.length > 0) {
+        const routeData = route.routes[0];
+        const distance = (routeData.distance / 1000).toFixed(1);
+        const duration = Math.round(routeData.duration / 60);
+        
+        toast.success(`Rota calculada: ${distance}km, ${duration} minutos`);
+      }
+    } catch (error) {
+      toast.error('Erro ao calcular rota');
     }
   };
 
   const handleRequestRide = () => {
-    if (!origin || !destination) {
-      toast.error('Por favor, defina origem e destino antes de solicitar a corrida.');
+    if (!routeInfo) {
+      toast.error('Calcule a rota primeiro');
       return;
     }
 
-    setRideState('searching');
-    toast.info('🔍 Procurando motoristas na região...', {
-      description: `Rota: ${origin.address} → ${destination.address}`
-    });
-    
-    // Simulate searching - in real app, this would connect to database
-    setTimeout(() => {
-      toast.info('⚠️ Nenhum motorista disponível no momento', {
-        description: 'Cadastre motoristas no sistema para ativar as corridas.'
-      });
-      setRideState('idle');
-    }, 3000);
+    // Here we would implement the ride request logic
+    toast.success('Funcionalidade de solicitação será implementada em breve');
   };
-
-  const handleCancelRide = () => {
-    setRideState('idle');
-    toast.info('❌ Busca cancelada');
-  };
-
-  const handleRateRide = (rating: number) => {
-    console.log('Avaliação da corrida:', rating);
-    toast.success(`⭐ Obrigado pela avaliação de ${rating} estrelas!`);
-    setRideState('idle');
-  };
-
-  const resetLocations = () => {
-    setOrigin(null);
-    setDestination(null);
-    setOriginAddress('');
-    setDestinationAddress('');
-    toast.info('Locais limpos. Defina nova origem e destino.');
-  };
-
-  if (currentView === 'profile') {
-    return (
-      <UserProfile 
-        user={userData} 
-        onClose={() => setCurrentView('map')} 
-      />
-    );
-  }
 
   return (
-    <div className="min-h-screen bg-gray-50 relative overflow-hidden">
-      {/* Header com controles */}
-      <div className="absolute top-0 left-0 right-0 z-20 bg-white/95 backdrop-blur-sm shadow-lg">
-        <div className="flex items-center justify-between p-4">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="hover:bg-gray-100"
-            onClick={() => setShowMenu(!showMenu)}
-          >
-            <Menu className="h-5 w-5" />
-          </Button>
-          
-          <div className="bg-gradient-to-r from-blue-500 to-cyan-400 text-white px-4 py-2 rounded-xl shadow-md">
-            <h1 className="text-xl font-bold">Viaja+ 3D</h1>
-          </div>
-          
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="hover:bg-gray-100"
-            onClick={() => setCurrentView('profile')}
-          >
-            <User className="h-5 w-5" />
-          </Button>
-        </div>
-
-        {/* Botões de seleção de local */}
-        <div className="px-4 pb-4 space-y-3">
-          <div className="flex items-center space-x-3">
-            <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-            <SecureMapboxAddressAutocomplete
-              value={originAddress}
-              onChange={setOriginAddress}
-              placeholder="Escolher Local de Partida"
-              className="flex-1"
-              onPlaceSelect={handleOriginSelect}
-              showCurrentLocationButton={true}
-            />
-          </div>
-          
-          <div className="flex items-center space-x-3">
-            <MapPin className="w-3 h-3 text-red-500" />
-            <SecureMapboxAddressAutocomplete
-              value={destinationAddress}
-              onChange={setDestinationAddress}
-              placeholder="Escolher Local de Destino"
-              className="flex-1"
-              onPlaceSelect={handleDestinationSelect}
-              showCurrentLocationButton={false}
-            />
-          </div>
-
-          {/* Botões de ação */}
-          <div className="flex space-x-2">
-            {origin && destination && (
-              <Button
-                onClick={handleRequestRide}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
-                disabled={rideState !== 'idle'}
-              >
-                <Car className="h-4 w-4 mr-2" />
-                Solicitar Corrida
-              </Button>
-            )}
-            
-            {(origin || destination) && (
-              <Button
-                onClick={resetLocations}
-                variant="outline"
-                className="px-4"
-              >
-                Limpar
-              </Button>
-            )}
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50">
+      {/* Header */}
+      <div className="bg-white shadow-sm border-b">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="h-10 w-10 bg-gradient-to-r from-blue-600 to-green-600 rounded-lg flex items-center justify-center">
+                <Plus className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">
+                  Viaja+
+                </h1>
+                <p className="text-sm text-gray-600">Transporte Saúde Municipal</p>
+              </div>
+            </div>
+            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+              Juiz de Fora - MG
+            </Badge>
           </div>
         </div>
       </div>
 
-      {/* Menu lateral */}
-      {showMenu && (
-        <>
-          <div className="absolute top-0 left-0 z-30 w-80 h-full bg-white/95 backdrop-blur-xl shadow-2xl">
-            <div className="p-6 space-y-4">
-              <div className="flex items-center justify-between mb-6">
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-2xl mx-auto space-y-6">
+          {/* Welcome Card */}
+          <Card className="bg-gradient-to-r from-blue-600 to-green-600 text-white">
+            <CardContent className="p-6">
+              <h2 className="text-xl font-semibold mb-2">Bem-vindo ao Viaja+</h2>
+              <p className="text-blue-100">
+                Transporte gratuito e seguro para consultas médicas e exames de saúde
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Route Planning Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Navigation className="h-5 w-5 text-blue-600" />
+                <span>Solicitar Transporte</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Origin Input */}
+              <div className="relative">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Local de Partida
+                </label>
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-3 h-4 w-4 text-green-600" />
+                  <Input
+                    placeholder="Digite seu endereço de partida"
+                    value={originAddress}
+                    onChange={(e) => {
+                      setOriginAddress(e.target.value);
+                      handleAddressSearch(e.target.value, 'origin');
+                    }}
+                    className="pl-10"
+                  />
+                </div>
+                
+                {activeSuggestions === 'origin' && suggestions.length > 0 && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
+                    {suggestions.map((suggestion, index) => (
+                      <div
+                        key={index}
+                        className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                        onClick={() => handleSuggestionSelect(suggestion, 'origin')}
+                      >
+                        <div className="flex items-start space-x-2">
+                          <MapPin className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">
+                              {suggestion.text}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {suggestion.place_name}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Destination Input */}
+              <div className="relative">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Local de Destino
+                </label>
+                <div className="relative">
+                  <MapPin className="absolute left-3 top-3 h-4 w-4 text-red-600" />
+                  <Input
+                    placeholder="Hospital, clínica ou endereço de destino"
+                    value={destinationAddress}
+                    onChange={(e) => {
+                      setDestinationAddress(e.target.value);
+                      handleAddressSearch(e.target.value, 'destination');
+                    }}
+                    className="pl-10"
+                  />
+                </div>
+                
+                {activeSuggestions === 'destination' && suggestions.length > 0 && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
+                    {suggestions.map((suggestion, index) => (
+                      <div
+                        key={index}
+                        className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                        onClick={() => handleSuggestionSelect(suggestion, 'destination')}
+                      >
+                        <div className="flex items-start space-x-2">
+                          <MapPin className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">
+                              {suggestion.text}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {suggestion.place_name}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Calculate Route Button */}
+              <Button 
+                onClick={handleCalculateRoute}
+                disabled={!originCoords || !destinationCoords || loading}
+                className="w-full bg-blue-600 hover:bg-blue-700"
+              >
+                {loading ? 'Calculando...' : 'Calcular Rota'}
+              </Button>
+
+              {/* Route Information */}
+              {routeInfo && routeInfo.routes && routeInfo.routes.length > 0 && (
+                <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                  <h3 className="font-semibold text-gray-900">Informações da Rota</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex items-center space-x-2">
+                      <Navigation className="h-4 w-4 text-blue-600" />
+                      <div>
+                        <p className="text-xs text-gray-500">Distância</p>
+                        <p className="font-semibold">
+                          {(routeInfo.routes[0].distance / 1000).toFixed(1)} km
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Clock className="h-4 w-4 text-green-600" />
+                      <div>
+                        <p className="text-xs text-gray-500">Tempo Estimado</p>
+                        <p className="font-semibold">
+                          {Math.round(routeInfo.routes[0].duration / 60)} min
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <Button 
+                    onClick={handleRequestRide}
+                    className="w-full bg-green-600 hover:bg-green-700"
+                  >
+                    Solicitar Transporte Gratuito
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Emergency Contact Card */}
+          <Card className="border-orange-200 bg-orange-50">
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-3">
+                <Phone className="h-5 w-5 text-orange-600" />
                 <div>
-                  <h2 className="text-lg font-semibold text-gray-800">Menu Principal</h2>
-                  <p className="text-sm text-gray-600">Navegação do sistema</p>
-                </div>
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={() => setShowMenu(false)}
-                >
-                  ✕
-                </Button>
-              </div>
-              
-              <div className="space-y-3">
-                <Link to="/login" className="block">
-                  <Button className="w-full bg-gradient-to-r from-blue-500 to-cyan-400 text-white justify-start shadow-md hover:shadow-lg">
-                    <LogIn className="h-4 w-4 mr-2" />
-                    Entrar no Sistema
-                  </Button>
-                </Link>
-                
-                <Link to="/register" className="block">
-                  <Button variant="outline" className="w-full justify-start hover:bg-gray-50">
-                    <UserPlus className="h-4 w-4 mr-2" />
-                    Criar Conta
-                  </Button>
-                </Link>
-                
-                <Link to="/admin/drivers" className="block">
-                  <Button variant="outline" className="w-full justify-start hover:bg-gray-50">
-                    <Car className="h-4 w-4 mr-2" />
-                    Gerenciar Motoristas
-                  </Button>
-                </Link>
-              </div>
-
-              <div className="mt-8 p-4 bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-xl">
-                <div className="text-sm font-medium text-blue-800 mb-2 flex items-center">
-                  🗺️ Mapa Interativo 3D
-                </div>
-                <div className="text-xs text-blue-600 space-y-1">
-                  <p>✓ Digite endereços ou clique no mapa</p>
-                  <p>✓ Visualização 3D com prédios extrudados</p>
-                  <p>✓ Camada de tráfego em tempo real</p>
-                  <p>✓ Cálculo automático de rota</p>
+                  <h3 className="font-semibold text-orange-900">Emergência Médica</h3>
+                  <p className="text-sm text-orange-700">
+                    Em caso de emergência, ligue: <strong>192 (SAMU)</strong>
+                  </p>
                 </div>
               </div>
-            </div>
-          </div>
-          
-          <div 
-            className="absolute inset-0 bg-black/20 backdrop-blur-sm z-25"
-            onClick={() => setShowMenu(false)}
-          />
-        </>
-      )}
+            </CardContent>
+          </Card>
 
-      {/* Mapa 3D em tela cheia */}
-      <div className="absolute inset-0 pt-32">
-        <SecureMapboxComponent
-          origin={origin}
-          destination={destination}
-          onLocationSelect={handleMapClick}
-          className="w-full h-full"
-          center={{ lat: -21.7554, lng: -43.3636 }} // Juiz de Fora
-          zoom={15}
-        />
-      </div>
-
-      {/* Status da corrida quando ativa */}
-      {rideState !== 'idle' && (
-        <div className="absolute bottom-0 left-0 right-0 z-10">
-          <div className="bg-white/95 backdrop-blur-xl rounded-t-3xl shadow-2xl">
-            <div className="p-6">
-              <RideStatus
-                status={rideState}
-                driver={undefined}
-                onCancel={handleCancelRide}
-                onRate={handleRateRide}
-              />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Instruções flutuantes */}
-      <div className="absolute bottom-4 left-4 right-4 z-15">
-        <div className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg p-4">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-gradient-to-r from-green-400 to-blue-500 rounded-full flex items-center justify-center">
-              <Navigation className="h-5 w-5 text-white" />
-            </div>
-            <div className="flex-1">
-              <div className="font-medium text-gray-800 text-sm">
-                {!origin ? 'Digite o endereço ou clique no mapa para definir origem' : 
-                 !destination ? 'Digite o endereço ou clique no mapa para definir destino' : 
-                 'Origem e destino definidos! Solicite sua corrida.'}
+          {/* Health Facilities Info */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Unidades de Saúde Cadastradas</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-3">
+                <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                  <div>
+                    <p className="font-medium">Hospital Monte Sinai</p>
+                    <p className="text-sm text-gray-600">Centro - Juiz de Fora</p>
+                  </div>
+                  <Badge>Hospital</Badge>
+                </div>
+                <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                  <div>
+                    <p className="font-medium">UPA Norte</p>
+                    <p className="text-sm text-gray-600">Francisco Bernardino - JF</p>
+                  </div>
+                  <Badge variant="outline">Clínica</Badge>
+                </div>
+                <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                  <div>
+                    <p className="font-medium">Hospital Universitário</p>
+                    <p className="text-sm text-gray-600">Santa Catarina - JF</p>
+                  </div>
+                  <Badge>Hospital</Badge>
+                </div>
               </div>
-              <div className="text-gray-600 text-xs">
-                {origin && destination ? 
-                  'Visualize a rota calculada no mapa 3D' : 
-                  'Use os campos acima ou toque no mapa'}
-              </div>
-              <div className="flex items-center mt-1">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-2"></div>
-                <span className="text-xs text-gray-500">Mapa 3D carregado</span>
-              </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
