@@ -47,29 +47,45 @@ export const useUserProfile = () => {
       const profileData = await healthTransportApi.getUserProfile(user.id);
       console.log('Dados do perfil:', profileData);
       
-      // Buscar rides do usuário para calcular estatísticas
-      const ridesData = await healthTransportApi.getUserRides(user.id, 'patient');
-      console.log('Rides do usuário:', ridesData);
-      
-      // Calcular estatísticas
-      const completedRides = ridesData.rides?.filter(ride => ride.status === 'completed') || [];
-      const totalTrips = completedRides.length;
-      
-      // Calcular avaliação média apenas se houver avaliações
-      const ridesWithRating = completedRides.filter(ride => ride.driver_rating && ride.driver_rating > 0);
-      const hasRating = ridesWithRating.length > 0;
-      const rating = hasRating 
-        ? ridesWithRating.reduce((sum, ride) => sum + (ride.driver_rating || 0), 0) / ridesWithRating.length
-        : null;
+      // Inicializar stats padrão
+      let stats = {
+        totalTrips: 0,
+        rating: null as number | null,
+        hasRating: false
+      };
+
+      // Tentar buscar rides do usuário para calcular estatísticas
+      try {
+        const ridesData = await healthTransportApi.getUserRides(user.id, 'patient');
+        console.log('Rides do usuário:', ridesData);
+        
+        if (ridesData && ridesData.rides) {
+          // Calcular estatísticas
+          const completedRides = ridesData.rides.filter(ride => ride.status === 'completed') || [];
+          const totalTrips = completedRides.length;
+          
+          // Calcular avaliação média apenas se houver avaliações
+          const ridesWithRating = completedRides.filter(ride => ride.driver_rating && ride.driver_rating > 0);
+          const hasRating = ridesWithRating.length > 0;
+          const rating = hasRating 
+            ? ridesWithRating.reduce((sum, ride) => sum + (ride.driver_rating || 0), 0) / ridesWithRating.length
+            : null;
+
+          stats = {
+            totalTrips,
+            rating: rating ? Number(rating.toFixed(1)) : null,
+            hasRating
+          };
+        }
+      } catch (ridesError) {
+        console.error('Erro ao buscar rides do usuário (usando dados padrão):', ridesError);
+        // Continuar com stats padrão se a busca de rides falhar
+      }
 
       setUserProfile({
         profile: profileData.profile,
         patientData: profileData.specific_data,
-        stats: {
-          totalTrips,
-          rating: rating ? Number(rating.toFixed(1)) : null,
-          hasRating
-        }
+        stats
       });
 
     } catch (err) {
