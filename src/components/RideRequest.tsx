@@ -21,9 +21,10 @@ interface VehicleOption {
 interface RideRequestProps {
   onRequestRide: (vehicleType: string, pickup: string, destination: string) => void;
   prefilledDestination?: string;
+  onRouteChange?: (pickup: {lat: number, lng: number} | null, destination: {lat: number, lng: number} | null) => void;
 }
 
-const RideRequest = ({ onRequestRide, prefilledDestination }: RideRequestProps) => {
+const RideRequest = ({ onRequestRide, prefilledDestination, onRouteChange }: RideRequestProps) => {
   const [pickup, setPickup] = useState('');
   const [destination, setDestination] = useState('');
   const [selectedVehicle, setSelectedVehicle] = useState<string>('');
@@ -40,6 +41,13 @@ const RideRequest = ({ onRequestRide, prefilledDestination }: RideRequestProps) 
       toast.success('Destino selecionado automaticamente!');
     }
   }, [prefilledDestination]);
+
+  // Notify parent component about route changes
+  useEffect(() => {
+    if (onRouteChange) {
+      onRouteChange(pickupCoords, destinationCoords);
+    }
+  }, [pickupCoords, destinationCoords, onRouteChange]);
 
   // Calculate route when both coordinates are available
   useEffect(() => {
@@ -64,24 +72,15 @@ const RideRequest = ({ onRequestRide, prefilledDestination }: RideRequestProps) 
     getRoute();
   }, [pickupCoords, destinationCoords, calculateRoute]);
 
-  // Vehicle options without prices, only showing ETA
+  // Simplified vehicle options - only 2 types
   const vehicleOptions: VehicleOption[] = [
     {
-      id: 'viaja-economico',
-      name: 'Viaja Econômico',
+      id: 'viaja-tradicional',
+      name: 'Viaja Tradicional',
       description: 'Veículo padrão para transporte',
-      eta: '5-8 min',
+      eta: '5-10 min',
       capacity: 4,
       icon: '🚗',
-      wheelchairAccessible: false
-    },
-    {
-      id: 'viaja-conforto',
-      name: 'Viaja Conforto',
-      description: 'Mais espaço e conforto',
-      eta: '8-12 min',
-      capacity: 4,
-      icon: '🚙',
       wheelchairAccessible: false
     },
     {

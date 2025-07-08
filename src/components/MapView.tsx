@@ -14,14 +14,16 @@ interface Driver {
 interface MapViewProps {
   drivers: Driver[];
   userLocation?: { lat: number; lng: number };
-  destination?: { lat: number; lng: number };
+  origin?: { lat: number; lng: number } | null;
+  destination?: { lat: number; lng: number } | null;
 }
 
-const MapView = ({ drivers, userLocation, destination }: MapViewProps) => {
+const MapView = ({ drivers, userLocation, origin, destination }: MapViewProps) => {
   return (
     <DashboardMap
       drivers={drivers}
       userLocation={userLocation}
+      origin={origin}
       destination={destination}
     />
   );

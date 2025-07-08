@@ -14,15 +14,16 @@ interface Driver {
 interface DashboardMapProps {
   drivers: Driver[];
   userLocation?: { lat: number; lng: number };
-  destination?: { lat: number; lng: number };
+  origin?: { lat: number; lng: number } | null;
+  destination?: { lat: number; lng: number } | null;
 }
 
-const DashboardMap = ({ drivers, userLocation, destination }: DashboardMapProps) => {
+const DashboardMap = ({ drivers, userLocation, origin, destination }: DashboardMapProps) => {
   return (
     <div className="w-full h-96 rounded-lg overflow-hidden">
       <SecureMapboxComponent
         drivers={drivers}
-        origin={userLocation}
+        origin={origin || userLocation}
         destination={destination}
         className="w-full h-full"
         center={{ lat: -21.7554, lng: -43.3636 }} // Juiz de Fora

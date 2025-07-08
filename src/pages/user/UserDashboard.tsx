@@ -14,6 +14,8 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 const UserDashboard = () => {
   const [rideState, setRideState] = useState<'idle' | 'searching' | 'driver-assigned' | 'driver-arriving' | 'in-transit' | 'completed'>('idle');
   const [selectedDestination, setSelectedDestination] = useState<string>('');
+  const [routeOrigin, setRouteOrigin] = useState<{lat: number, lng: number} | null>(null);
+  const [routeDestination, setRouteDestination] = useState<{lat: number, lng: number} | null>(null);
   const { userProfile, loading, error } = useUserProfile();
 
   // Mock drivers for demonstration
@@ -88,6 +90,11 @@ const UserDashboard = () => {
     }
   };
 
+  const handleRouteChange = (origin: {lat: number, lng: number} | null, destination: {lat: number, lng: number} | null) => {
+    setRouteOrigin(origin);
+    setRouteDestination(destination);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -159,6 +166,8 @@ const UserDashboard = () => {
                 <MapView 
                   drivers={mockDrivers}
                   userLocation={{ lat: -21.7554, lng: -43.3636 }}
+                  origin={routeOrigin}
+                  destination={routeDestination}
                 />
               </CardContent>
             </Card>
@@ -168,6 +177,7 @@ const UserDashboard = () => {
                 <RideRequest 
                   onRequestRide={handleRequestRide} 
                   prefilledDestination={selectedDestination}
+                  onRouteChange={handleRouteChange}
                 />
               ) : (
                 <RideStatus

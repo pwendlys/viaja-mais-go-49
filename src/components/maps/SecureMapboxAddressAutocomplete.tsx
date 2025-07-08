@@ -26,8 +26,28 @@ const SecureMapboxAddressAutocomplete = ({
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [gettingLocation, setGettingLocation] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  const suggestionContainerRef = useRef<HTMLDivElement>(null)
   const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null)
   const { searchPlaces, reverseGeocode, loading } = useMapboxApi()
+
+  // Handle clicks outside to close suggestions
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        suggestionContainerRef.current &&
+        !suggestionContainerRef.current.contains(event.target as Node) &&
+        inputRef.current &&
+        !inputRef.current.contains(event.target as Node)
+      ) {
+        setShowSuggestions(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [])
 
   useEffect(() => {
     if (searchTimeout) {
@@ -45,8 +65,13 @@ const SecureMapboxAddressAutocomplete = ({
         const data = await searchPlaces(value)
         
         if (data.features) {
-          setSuggestions(data.features)
-          setShowSuggestions(true)
+          // Remove duplicates based on place_name
+          const uniqueFeatures = data.features.filter((feature: any, index: number, self: any[]) => 
+            index === self.findIndex((f: any) => f.place_name === feature.place_name)
+          )
+          
+          setSuggestions(uniqueFeatures)
+          setShowSuggestions(uniqueFeatures.length > 0)
         } else {
           setSuggestions([])
           setShowSuggestions(false)
@@ -80,10 +105,6 @@ const SecureMapboxAddressAutocomplete = ({
       description: address,
       coordinates
     })
-  }
-
-  const handleInputBlur = () => {
-    setTimeout(() => setShowSuggestions(false), 200)
   }
 
   const getCurrentLocation = () => {
@@ -148,7 +169,6 @@ const SecureMapboxAddressAutocomplete = ({
             ref={inputRef}
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            onBlur={handleInputBlur}
             onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
             placeholder={placeholder}
             className="pl-10 pr-4"
@@ -177,10 +197,13 @@ const SecureMapboxAddressAutocomplete = ({
       </div>
 
       {showSuggestions && suggestions.length > 0 && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+        <div 
+          ref={suggestionContainerRef}
+          className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto"
+        >
           {suggestions.map((suggestion, index) => (
             <Button
-              key={suggestion.id || index}
+              key={suggestion.id || `${suggestion.place_name}-${index}`}
               variant="ghost"
               className="w-full justify-start text-left p-3 hover:bg-gray-50 rounded-none border-b border-gray-100 last:border-b-0"
               onClick={() => handleSuggestionClick(suggestion)}
