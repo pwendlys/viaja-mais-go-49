@@ -8,13 +8,15 @@ interface Patient {
   name: string;
   email: string;
   phone: string;
-  status: string;
-  totalRides: number;
-  rating: number;
-  joinDate: string;
-  lastActivity: string;
   address: string;
   susNumber: string;
+  medicalCondition: string;
+  mobilityNeeds: string;
+  status: string;
+  joinDate: string;
+  documentsStatus: string;
+  emergencyContactName: string;
+  emergencyContactPhone: string;
 }
 
 export const usePatientsData = () => {
@@ -23,7 +25,10 @@ export const usePatientsData = () => {
 
   const fetchPatients = async () => {
     try {
-      const { data, error } = await supabase
+      console.log('Buscando pacientes...');
+      
+      // Buscar todos os profiles de pacientes
+      const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select(`
           id,
@@ -33,47 +38,56 @@ export const usePatientsData = () => {
           created_at,
           patients (
             address,
-            sus_number
-          ),
-          user_approvals (
-            status
+            sus_number,
+            medical_condition,
+            mobility_needs,
+            emergency_contact_name,
+            emergency_contact_phone
           )
         `)
         .eq('user_type', 'patient');
 
-      if (error) throw error;
+      if (profilesError) {
+        console.error('Erro ao buscar profiles:', profilesError);
+        throw profilesError;
+      }
 
-      // Buscar estatísticas de corridas para cada paciente
-      const { data: ridesData, error: ridesError } = await supabase
-        .from('rides')
-        .select('patient_id, status, patient_rating, created_at');
+      console.log('Profiles encontrados:', profilesData?.length || 0);
 
-      if (ridesError) throw ridesError;
+      // Buscar aprovações de usuários
+      const { data: approvalsData, error: approvalsError } = await supabase
+        .from('user_approvals')
+        .select('user_id, status')
+        .eq('user_type', 'patient');
 
-      const formattedPatients = data?.map(profile => {
-        const userRides = ridesData?.filter(ride => ride.patient_id === profile.id) || [];
-        const completedRides = userRides.filter(ride => ride.status === 'completed');
-        const avgRating = completedRides.length > 0 
-          ? completedRides.reduce((sum, ride) => sum + (ride.patient_rating || 0), 0) / completedRides.length
-          : 0;
+      if (approvalsError) {
+        console.error('Erro ao buscar aprovações:', approvalsError);
+      }
 
-        const lastRide = userRides.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+      // Criar mapa de aprovações
+      const approvalsMap = (approvalsData || []).reduce((acc, approval) => {
+        acc[approval.user_id] = approval.status;
+        return acc;
+      }, {} as Record<string, string>);
 
-        return {
-          id: profile.id,
-          name: profile.full_name,
-          email: '', // Email não disponível por segurança
-          phone: profile.phone || '',
-          status: profile.is_active ? 'Ativo' : 'Inativo',
-          totalRides: userRides.length,
-          rating: avgRating,
-          joinDate: profile.created_at,
-          lastActivity: lastRide?.created_at || profile.created_at,
-          address: profile.patients?.[0]?.address || '',
-          susNumber: profile.patients?.[0]?.sus_number || ''
-        };
-      }) || [];
+      const formattedPatients = (profilesData || []).map(profile => ({
+        id: profile.id,
+        name: profile.full_name || 'Nome não informado',
+        email: '', // Email não está disponível via profiles por segurança
+        phone: profile.phone || '',
+        address: (profile.patients as any)?.[0]?.address || 'Não informado',
+        susNumber: (profile.patients as any)?.[0]?.sus_number || 'Não informado',
+        medicalCondition: (profile.patients as any)?.[0]?.medical_condition || 'Não informado',
+        mobilityNeeds: (profile.patients as any)?.[0]?.mobility_needs || 'Não informado',
+        status: profile.is_active ? 'Ativo' : 'Inativo',
+        joinDate: profile.created_at || '',
+        documentsStatus: approvalsMap[profile.id] === 'approved' ? 'Aprovado' : 
+                        approvalsMap[profile.id] === 'rejected' ? 'Rejeitado' : 'Pendente',
+        emergencyContactName: (profile.patients as any)?.[0]?.emergency_contact_name || '',
+        emergencyContactPhone: (profile.patients as any)?.[0]?.emergency_contact_phone || ''
+      }));
 
+      console.log('Pacientes formatados:', formattedPatients.length);
       setPatients(formattedPatients);
     } catch (error) {
       console.error('Erro ao buscar pacientes:', error);
@@ -94,21 +108,53 @@ export const usePatientsData = () => {
 
       if (error) throw error;
 
-      // Atualizar também o status de aprovação
-      await supabase
-        .from('user_approvals')
-        .upsert({
-          user_id: patientId,
-          user_type: 'patient',
-          status: isActive ? 'approved' : 'rejected',
-          reviewed_at: new Date().toISOString()
-        });
+      // Atualizar também o status de aprovação se necessário
+      if (newStatus === 'Ativo') {
+        await supabase
+          .from('user_approvals')
+          .upsert({
+            user_id: patientId,
+            user_type: 'patient',
+            status: 'approved',
+            reviewed_at: new Date().toISOString()
+          });
+      }
 
       await fetchPatients();
       toast.success(`Status do paciente alterado para ${newStatus}`);
     } catch (error) {
       console.error('Erro ao atualizar status:', error);
       toast.error('Erro ao atualizar status do paciente');
+    }
+  };
+
+  const approveDocuments = async (patientId: string, approved: boolean, rejectionReason?: string) => {
+    try {
+      const { error } = await supabase
+        .from('user_approvals')
+        .upsert({
+          user_id: patientId,
+          user_type: 'patient',
+          status: approved ? 'approved' : 'rejected',
+          reviewed_at: new Date().toISOString(),
+          rejection_reason: approved ? null : rejectionReason
+        });
+
+      if (error) throw error;
+
+      // Se aprovado, ativar o paciente
+      if (approved) {
+        await supabase
+          .from('profiles')
+          .update({ is_active: true })
+          .eq('id', patientId);
+      }
+
+      await fetchPatients();
+      toast.success(`Documentos ${approved ? 'aprovados' : 'rejeitados'}`);
+    } catch (error) {
+      console.error('Erro ao aprovar documentos:', error);
+      toast.error('Erro ao processar aprovação');
     }
   };
 
@@ -120,6 +166,7 @@ export const usePatientsData = () => {
     patients,
     isLoading,
     updatePatientStatus,
+    approveDocuments,
     refetchPatients: fetchPatients
   };
 };
