@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Users, Car, MapPin, DollarSign, FileText, AlertTriangle, TrendingUp, Clock } from 'lucide-react';
+import { Users, Car, MapPin, DollarSign, FileText, AlertTriangle, TrendingUp, Clock, CheckCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AdminHeader from '@/components/admin/AdminHeader';
@@ -8,7 +8,9 @@ import UserManagement from './UserManagement';
 import DriverManagement from './DriverManagement';
 import RideManagement from './RideManagement';
 import PricingConfig from './PricingConfig';
+import PaymentManagement from './PaymentManagement';
 import { healthTransportApi } from '@/services/healthTransportApi';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 const AdminDashboard = () => {
@@ -17,7 +19,8 @@ const AdminDashboard = () => {
     total_drivers: 0,
     total_rides: 0,
     active_rides: 0,
-    available_drivers: 0
+    pending_patient_approvals: 0,
+    pending_driver_approvals: 0
   });
   const [recentRides, setRecentRides] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -35,8 +38,29 @@ const AdminDashboard = () => {
   const loadDashboardData = async () => {
     try {
       setLoading(true);
+      
+      // Carregar estatísticas básicas
       const data = await healthTransportApi.getDashboardStats();
-      setStats(data.stats);
+      
+      // Carregar aprovações pendentes
+      const { data: pendingPatients } = await supabase
+        .from('user_approvals')
+        .select('*')
+        .eq('user_type', 'patient')
+        .eq('status', 'pending');
+
+      const { data: pendingDrivers } = await supabase
+        .from('user_approvals')
+        .select('*')
+        .eq('user_type', 'driver')
+        .eq('status', 'pending');
+
+      setStats({
+        ...data.stats,
+        pending_patient_approvals: pendingPatients?.length || 0,
+        pending_driver_approvals: pendingDrivers?.length || 0
+      });
+      
       setRecentRides(data.recent_rides);
     } catch (error) {
       console.error('Erro ao carregar dados do dashboard:', error);
@@ -84,11 +108,11 @@ const AdminDashboard = () => {
         <Tabs defaultValue="overview" className="space-y-6">
           <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="overview">Visão Geral</TabsTrigger>
-            <TabsTrigger value="users">Usuários</TabsTrigger>
+            <TabsTrigger value="patients">Pacientes</TabsTrigger>
             <TabsTrigger value="drivers">Motoristas</TabsTrigger>
             <TabsTrigger value="rides">Corridas</TabsTrigger>
+            <TabsTrigger value="payments">Pagamentos</TabsTrigger>
             <TabsTrigger value="pricing">Preços</TabsTrigger>
-            <TabsTrigger value="reports">Relatórios</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
@@ -143,17 +167,22 @@ const AdminDashboard = () => {
               </Card>
             </div>
 
-            {/* Quick Actions */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Aprovações Pendentes */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <Card className="cursor-pointer hover:shadow-lg transition-shadow">
                 <CardContent className="pt-6">
                   <div className="flex items-center space-x-4">
                     <div className="p-3 bg-yellow-100 rounded-full">
                       <AlertTriangle className="h-6 w-6 text-yellow-600" />
                     </div>
-                    <div>
-                      <h3 className="font-semibold">Aprovações Pendentes</h3>
-                      <p className="text-sm text-gray-600">Revisar cadastros pendentes</p>
+                    <div className="flex-1">
+                      <h3 className="font-semibold">Pacientes Pendentes</h3>
+                      <p className="text-sm text-gray-600">
+                        {stats.pending_patient_approvals} cadastros aguardando aprovação
+                      </p>
+                    </div>
+                    <div className="text-2xl font-bold text-yellow-600">
+                      {stats.pending_patient_approvals}
                     </div>
                   </div>
                 </CardContent>
@@ -162,12 +191,48 @@ const AdminDashboard = () => {
               <Card className="cursor-pointer hover:shadow-lg transition-shadow">
                 <CardContent className="pt-6">
                   <div className="flex items-center space-x-4">
+                    <div className="p-3 bg-blue-100 rounded-full">
+                      <Car className="h-6 w-6 text-blue-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-semibold">Motoristas Pendentes</h3>
+                      <p className="text-sm text-gray-600">
+                        {stats.pending_driver_approvals} cadastros aguardando aprovação
+                      </p>
+                    </div>
+                    <div className="text-2xl font-bold text-blue-600">
+                      {stats.pending_driver_approvals}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card className="cursor-pointer hover:shadow-lg transition-shadow">
+                <CardContent className="pt-6">
+                  <div className="flex items-center space-x-4">
                     <div className="p-3 bg-green-100 rounded-full">
                       <DollarSign className="h-6 w-6 text-green-600" />
                     </div>
                     <div>
-                      <h3 className="font-semibold">Pagamentos</h3>
-                      <p className="text-sm text-gray-600">Gerenciar pagamentos aos motoristas</p>
+                      <h3 className="font-semibold">Gerenciar Pagamentos</h3>
+                      <p className="text-sm text-gray-600">Controlar pagamentos aos motoristas</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="cursor-pointer hover:shadow-lg transition-shadow">
+                <CardContent className="pt-6">
+                  <div className="flex items-center space-x-4">
+                    <div className="p-3 bg-purple-100 rounded-full">
+                      <TrendingUp className="h-6 w-6 text-purple-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">Configurar Preços</h3>
+                      <p className="text-sm text-gray-600">Definir tarifas por tipo de veículo</p>
                     </div>
                   </div>
                 </CardContent>
@@ -228,7 +293,7 @@ const AdminDashboard = () => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="users">
+          <TabsContent value="patients">
             <UserManagement />
           </TabsContent>
 
@@ -240,29 +305,12 @@ const AdminDashboard = () => {
             <RideManagement />
           </TabsContent>
 
-          <TabsContent value="pricing">
-            <PricingConfig />
+          <TabsContent value="payments">
+            <PaymentManagement />
           </TabsContent>
 
-          <TabsContent value="reports">
-            <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Relatórios</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center py-12">
-                    <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-xl font-semibold text-gray-600 mb-2">
-                      Relatórios em Desenvolvimento
-                    </h3>
-                    <p className="text-gray-500">
-                      Esta seção permitirá gerar relatórios detalhados das corridas, pagamentos e performance.
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+          <TabsContent value="pricing">
+            <PricingConfig />
           </TabsContent>
         </Tabs>
       </div>
