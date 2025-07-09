@@ -9,6 +9,7 @@ import RideStatus from '@/components/RideStatus';
 import UserHeader from '@/components/user/UserHeader';
 import MapView from '@/components/MapView';
 import { useUserProfile } from '@/hooks/useUserProfile';
+import TabbedRideRequest from '@/components/TabbedRideRequest';
 
 interface Location {
   lat: number;
@@ -74,8 +75,22 @@ const UserDashboard = () => {
 
   const handleRequestRide = (vehicleType: string, pickup: string, destination: string) => {
     setRideState('searching');
+    toast.success(`Solicitando ${vehicleType} de ${pickup} para ${destination}`);
     // In real app, this would connect to database
     setTimeout(() => setRideState('idle'), 3000);
+  };
+
+  const handleScheduleRide = (data: {
+    vehicleType: string;
+    pickup: string;
+    destination: string;
+    appointmentDate: Date;
+    appointmentTime: string;
+    notes?: string;
+  }) => {
+    toast.success(`Transporte agendado para ${data.appointmentDate.toLocaleDateString('pt-BR')} às ${data.appointmentTime}`);
+    console.log('Agendamento:', data);
+    // In real app, this would save to database
   };
 
   const handleCancelRide = () => {
@@ -178,8 +193,9 @@ const UserDashboard = () => {
 
             <div id="ride-request-section" className="flex justify-center">
               {rideState === 'idle' ? (
-                <ImprovedRideRequest 
-                  onRequestRide={handleRequestRide} 
+                <TabbedRideRequest 
+                  onRequestRide={handleRequestRide}
+                  onScheduleRide={handleScheduleRide}
                   prefilledDestination={selectedDestination}
                   onRouteChange={handleRouteChange}
                 />
