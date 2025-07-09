@@ -1,19 +1,18 @@
 
-import { HomeIcon, Users, Car, BarChart3, Settings, User, History, UserCog, DollarSign } from "lucide-react";
+import { HomeIcon, Car, Users, Settings, BarChart3, User, History, CreditCard, MapPin, LogIn, UserPlus } from "lucide-react";
 import Index from "./pages/Index";
+import Login from "./pages/auth/Login";
+import Register from "./pages/auth/Register";
 import UserDashboard from "./pages/user/UserDashboard";
+import DriverDashboard from "./pages/driver/DriverDashboard";
+import AdminDashboard from "./pages/admin/AdminDashboard";
 import RideHistory from "./pages/user/RideHistory";
 import PersonalSettings from "./pages/user/PersonalSettings";
-import AdminDashboard from "./pages/admin/AdminDashboard";
-import UserManagement from "./pages/admin/UserManagement";
-import DriverManagement from "./pages/admin/DriverManagement";
-import RideManagement from "./pages/admin/RideManagement";
-import AnalyticsDashboard from "./pages/admin/AnalyticsDashboard";
-import PricingConfig from "./pages/admin/PricingConfig";
-import DriverDashboard from "./pages/driver/DriverDashboard";
+import PaymentMethods from "./pages/user/PaymentMethods";
 import DriverProfile from "./pages/driver/DriverProfile";
-import VehicleManagement from "./pages/driver/VehicleManagement";
 import EarningsReport from "./pages/driver/EarningsReport";
+import VehicleManagement from "./pages/driver/VehicleManagement";
+import NotFound from "./pages/NotFound";
 
 export const navItems = [
   {
@@ -22,7 +21,18 @@ export const navItems = [
     icon: <HomeIcon className="h-4 w-4" />,
     page: <Index />,
   },
-  // User Routes
+  {
+    title: "Login",
+    to: "/login",
+    icon: <LogIn className="h-4 w-4" />,
+    page: <Login />,
+  },
+  {
+    title: "Cadastro",
+    to: "/register",
+    icon: <UserPlus className="h-4 w-4" />,
+    page: <Register />,
+  },
   {
     title: "Dashboard do Usuário",
     to: "/user/dashboard",
@@ -30,7 +40,7 @@ export const navItems = [
     page: <UserDashboard />,
   },
   {
-    title: "Histórico de Transportes",
+    title: "Histórico de Viagens",
     to: "/user/history",
     icon: <History className="h-4 w-4" />,
     page: <RideHistory />,
@@ -41,44 +51,12 @@ export const navItems = [
     icon: <Settings className="h-4 w-4" />,
     page: <PersonalSettings />,
   },
-  // Admin Routes
   {
-    title: "Dashboard Admin",
-    to: "/admin/dashboard",
-    icon: <BarChart3 className="h-4 w-4" />,
-    page: <AdminDashboard />,
+    title: "Métodos de Pagamento",
+    to: "/user/payments",
+    icon: <CreditCard className="h-4 w-4" />,
+    page: <PaymentMethods />,
   },
-  {
-    title: "Gerenciar Usuários",
-    to: "/admin/users",
-    icon: <Users className="h-4 w-4" />,
-    page: <UserManagement />,
-  },
-  {
-    title: "Gerenciar Motoristas",
-    to: "/admin/drivers",
-    icon: <Car className="h-4 w-4" />,
-    page: <DriverManagement />,
-  },
-  {
-    title: "Gerenciar Corridas",
-    to: "/admin/rides",
-    icon: <Car className="h-4 w-4" />,
-    page: <RideManagement />,
-  },
-  {
-    title: "Relatórios",
-    to: "/admin/analytics",
-    icon: <BarChart3 className="h-4 w-4" />,
-    page: <AnalyticsDashboard />,
-  },
-  {
-    title: "Configuração de Preços",
-    to: "/admin/pricing",
-    icon: <DollarSign className="h-4 w-4" />,
-    page: <PricingConfig />,
-  },
-  // Driver Routes
   {
     title: "Dashboard do Motorista",
     to: "/driver/dashboard",
@@ -88,8 +66,14 @@ export const navItems = [
   {
     title: "Perfil do Motorista",
     to: "/driver/profile",
-    icon: <UserCog className="h-4 w-4" />,
+    icon: <User className="h-4 w-4" />,
     page: <DriverProfile />,
+  },
+  {
+    title: "Relatório de Ganhos",
+    to: "/driver/earnings",
+    icon: <BarChart3 className="h-4 w-4" />,
+    page: <EarningsReport />,
   },
   {
     title: "Gerenciar Veículo",
@@ -98,9 +82,15 @@ export const navItems = [
     page: <VehicleManagement />,
   },
   {
-    title: "Relatório de Ganhos",
-    to: "/driver/earnings",
-    icon: <DollarSign className="h-4 w-4" />,
-    page: <EarningsReport />,
+    title: "Dashboard Admin",
+    to: "/admin/dashboard",
+    icon: <Settings className="h-4 w-4" />,
+    page: <AdminDashboard />,
+  },
+  {
+    title: "Página Não Encontrada",
+    to: "*",
+    icon: <HomeIcon className="h-4 w-4" />,
+    page: <NotFound />,
   },
 ];

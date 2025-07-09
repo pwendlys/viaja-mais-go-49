@@ -1,24 +1,49 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Car, User, UserCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
 const Login = () => {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
-  const [userType, setUserType] = useState<'patient' | 'driver' | 'admin'>('patient');
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   });
+
+  // Check if user is already logged in
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        // Redirect based on user type
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('user_type')
+          .eq('id', session.user.id)
+          .single();
+
+        if (profile?.user_type === 'patient') {
+          navigate('/user/dashboard');
+        } else if (profile?.user_type === 'driver') {
+          navigate('/driver/dashboard');
+        } else if (profile?.user_type === 'admin') {
+          navigate('/admin/dashboard');
+        } else {
+          navigate('/user/dashboard');
+        }
+      }
+    };
+
+    checkUser();
+  }, [navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,17 +56,24 @@ const Login = () => {
       });
 
       if (error) {
+        console.error('Login error:', error);
         toast.error('Erro ao fazer login: ' + error.message);
         return;
       }
 
       if (data.user) {
         // Check user profile to determine redirect
-        const { data: profile } = await supabase
+        const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('user_type')
           .eq('id', data.user.id)
           .single();
+
+        if (profileError) {
+          console.error('Profile error:', profileError);
+          toast.error('Erro ao buscar perfil do usuário');
+          return;
+        }
 
         toast.success('Login realizado com sucesso!');
         
@@ -57,6 +89,7 @@ const Login = () => {
         }
       }
     } catch (error) {
+      console.error('Unexpected login error:', error);
       toast.error('Erro inesperado ao fazer login');
     } finally {
       setLoading(false);

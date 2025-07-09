@@ -4,7 +4,7 @@ import { MapPin, Navigation, Clock, Car } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import LocationAwareAutocomplete from '@/components/maps/LocationAwareAutocomplete';
+import SimpleAddressAutocomplete from '@/components/SimpleAddressAutocomplete';
 import { toast } from 'sonner';
 
 interface Location {
@@ -93,7 +93,7 @@ const ImprovedRideRequest = ({
             <div className="w-3 h-3 bg-green-500 rounded-full"></div>
             <span>Origem</span>
           </label>
-          <LocationAwareAutocomplete
+          <SimpleAddressAutocomplete
             value={pickup}
             onChange={setPickup}
             onLocationSelect={handlePickupSelect}
@@ -109,7 +109,7 @@ const ImprovedRideRequest = ({
             <div className="w-3 h-3 bg-red-500 rounded-full"></div>
             <span>Destino</span>
           </label>
-          <LocationAwareAutocomplete
+          <SimpleAddressAutocomplete
             value={destination}
             onChange={setDestination}
             onLocationSelect={handleDestinationSelect}
