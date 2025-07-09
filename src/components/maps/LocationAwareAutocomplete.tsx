@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { MapPin, Search, X, Navigation, Heart } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -44,6 +43,7 @@ const LocationAwareAutocomplete = ({
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const timeoutRef = useRef<NodeJS.Timeout>();
+  const abortControllerRef = useRef<AbortController | null>(null);
   
   const { searchPlaces, reverseGeocode } = useMapboxApi();
 
@@ -73,8 +73,25 @@ const LocationAwareAutocomplete = ({
     };
   }, []);
 
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
+
   // Search suggestions with debounce
   useEffect(() => {
+    // Cancel previous request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
@@ -94,13 +111,23 @@ const LocationAwareAutocomplete = ({
         setSuggestions([]);
         setShowSuggestions(false);
       }
+      setIsLoading(false);
       return;
     }
 
     setIsLoading(true);
+    
     timeoutRef.current = setTimeout(async () => {
       try {
+        // Create new abort controller for this request
+        abortControllerRef.current = new AbortController();
+        
         const response = await searchPlaces(value, { lat: -21.7554, lng: -43.3636 });
+        
+        // Check if request was aborted
+        if (abortControllerRef.current.signal.aborted) {
+          return;
+        }
         
         if (response?.features && Array.isArray(response.features)) {
           const uniqueSuggestions = response.features.reduce((acc: AddressSuggestion[], feature: any) => {
@@ -124,10 +151,13 @@ const LocationAwareAutocomplete = ({
           setShowSuggestions(false);
         }
       } catch (error) {
-        console.error('Erro ao buscar endereços:', error);
-        setSuggestions([]);
-        setShowSuggestions(false);
-        toast.error('Erro ao buscar endereços. Tente novamente.');
+        // Only show error if request wasn't aborted
+        if (!abortControllerRef.current?.signal.aborted) {
+          console.error('Erro ao buscar endereços:', error);
+          setSuggestions([]);
+          setShowSuggestions(false);
+          toast.error('Erro ao buscar endereços. Tente novamente.');
+        }
       } finally {
         setIsLoading(false);
       }
@@ -172,23 +202,43 @@ const LocationAwareAutocomplete = ({
       return;
     }
 
+    if (gettingLocation) {
+      return; // Prevent multiple concurrent requests
+    }
+
     setGettingLocation(true);
+
+    const options = {
+      enableHighAccuracy: true,
+      timeout: 15000, // Increased timeout
+      maximumAge: 60000 // Cache for 1 minute
+    };
+
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         try {
+          console.log('Posição obtida:', position.coords);
           const { latitude, longitude } = position.coords;
-          const response = await reverseGeocode(latitude, longitude);
           
-          if (response?.features && response.features[0]) {
-            const address = response.features[0].place_name;
-            onChange(address);
-            onLocationSelect({
-              lat: latitude,
-              lng: longitude,
-              address: address
-            });
-            toast.success('Localização atual obtida com sucesso!');
-          } else {
+          // Try reverse geocoding first
+          try {
+            const response = await reverseGeocode(latitude, longitude);
+            
+            if (response?.features && response.features[0]) {
+              const address = response.features[0].place_name;
+              console.log('Endereço obtido:', address);
+              onChange(address);
+              onLocationSelect({
+                lat: latitude,
+                lng: longitude,
+                address: address
+              });
+              toast.success('Localização atual obtida com sucesso!');
+            } else {
+              throw new Error('Nenhum endereço encontrado');
+            }
+          } catch (geocodeError) {
+            console.warn('Erro no reverse geocoding, usando coordenadas:', geocodeError);
             // Fallback to coordinates if reverse geocoding fails
             const coordsAddress = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
             onChange(coordsAddress);
@@ -200,17 +250,8 @@ const LocationAwareAutocomplete = ({
             toast.success('Localização atual obtida!');
           }
         } catch (error) {
-          console.error('Erro ao obter endereço:', error);
-          // Use coordinates as fallback
-          const { latitude, longitude } = position.coords;
-          const coordsAddress = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
-          onChange(coordsAddress);
-          onLocationSelect({
-            lat: latitude,
-            lng: longitude,
-            address: coordsAddress
-          });
-          toast.success('Localização atual obtida!');
+          console.error('Erro ao processar localização:', error);
+          toast.error('Erro ao processar sua localização');
         } finally {
           setGettingLocation(false);
         }
@@ -221,24 +262,22 @@ const LocationAwareAutocomplete = ({
         
         switch (error.code) {
           case error.PERMISSION_DENIED:
-            errorMessage = 'Permissão de localização negada. Permita o acesso à localização.';
+            errorMessage = 'Permissão de localização negada. Permita o acesso à localização nas configurações do navegador.';
             break;
           case error.POSITION_UNAVAILABLE:
-            errorMessage = 'Localização não disponível.';
+            errorMessage = 'Localização não disponível. Verifique se o GPS está ativado.';
             break;
           case error.TIMEOUT:
-            errorMessage = 'Tempo limite para obter localização.';
+            errorMessage = 'Tempo limite para obter localização. Tente novamente.';
             break;
+          default:
+            errorMessage = 'Erro desconhecido ao obter localização.';
         }
         
         toast.error(errorMessage);
         setGettingLocation(false);
       },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 60000
-      }
+      options
     );
   };
 
@@ -304,6 +343,7 @@ const LocationAwareAutocomplete = ({
             placeholder={placeholder}
             className="pl-10 pr-20"
             autoComplete="off"
+            disabled={gettingLocation}
           />
           
           <div className="absolute right-1 top-1/2 transform -translate-y-1/2 flex items-center space-x-1">
@@ -317,11 +357,11 @@ const LocationAwareAutocomplete = ({
                 disabled={gettingLocation}
                 title="Usar localização atual"
               >
-                <Navigation className={`h-4 w-4 ${gettingLocation ? 'animate-spin' : ''}`} />
+                <Navigation className={`h-4 w-4 ${gettingLocation ? 'animate-spin text-blue-600' : ''}`} />
               </Button>
             )}
             
-            {value && (
+            {value && !gettingLocation && (
               <Button
                 type="button"
                 variant="ghost"
@@ -334,7 +374,7 @@ const LocationAwareAutocomplete = ({
             )}
           </div>
 
-          {isLoading && (
+          {(isLoading || gettingLocation) && (
             <div className="absolute right-12 top-1/2 transform -translate-y-1/2">
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
             </div>
