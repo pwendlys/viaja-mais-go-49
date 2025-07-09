@@ -22,7 +22,6 @@ const PricingConfig = () => {
     per_minute_rate: 0
   });
 
-  // Mock admin data
   const mockAdmin = {
     name: 'Admin Municipal',
     email: 'admin@prefeitura.gov.br',
@@ -70,11 +69,14 @@ const PricingConfig = () => {
   const getVehicleTypeLabel = (type: string) => {
     const labels = {
       'economico': 'Econômico',
-      'conforto': 'Conforto',
-      'premium': 'Premium',
-      'standard': 'Padrão'
+      'conforto': 'Conforto'
     };
     return labels[type as keyof typeof labels] || type;
+  };
+
+  const availableVehicleTypes = () => {
+    const existingTypes = pricingConfigs.map(config => config.vehicle_type);
+    return ['economico', 'conforto'].filter(type => !existingTypes.includes(type));
   };
 
   if (isLoading) {
@@ -99,95 +101,98 @@ const PricingConfig = () => {
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-800">Configuração de Preços</h1>
-              <p className="text-gray-600">Gerencie os valores cobrados por quilômetro e tempo</p>
+              <h1 className="text-2xl font-bold text-gray-800">Configuração de Preços por Tipo de Veículo</h1>
+              <p className="text-gray-600">Gerencie os valores para veículos Econômicos e de Conforto</p>
             </div>
             
-            <Dialog open={isAddingConfig} onOpenChange={setIsAddingConfig}>
-              <DialogTrigger asChild>
-                <Button className="gradient-viaja text-white">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Nova Configuração
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Adicionar Configuração de Preço</DialogTitle>
-                </DialogHeader>
-                
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="vehicleType">Tipo de Veículo</Label>
-                    <Select value={newConfig.vehicle_type} onValueChange={(value) => setNewConfig({...newConfig, vehicle_type: value})}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o tipo" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="economico">Econômico</SelectItem>
-                        <SelectItem value="conforto">Conforto</SelectItem>
-                        <SelectItem value="premium">Premium</SelectItem>
-                        <SelectItem value="accessibility">Acessibilidade</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+            {availableVehicleTypes().length > 0 && (
+              <Dialog open={isAddingConfig} onOpenChange={setIsAddingConfig}>
+                <DialogTrigger asChild>
+                  <Button className="gradient-viaja text-white">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Nova Configuração
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Adicionar Configuração de Preço</DialogTitle>
+                  </DialogHeader>
                   
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="pricePerKm">Preço por KM (R$)</Label>
-                      <Input
-                        id="pricePerKm"
-                        type="number"
-                        step="0.10"
-                        value={newConfig.price_per_km}
-                        onChange={(e) => setNewConfig({...newConfig, price_per_km: parseFloat(e.target.value) || 0})}
-                      />
+                      <Label htmlFor="vehicleType">Tipo de Veículo</Label>
+                      <Select value={newConfig.vehicle_type} onValueChange={(value) => setNewConfig({...newConfig, vehicle_type: value})}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione o tipo" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableVehicleTypes().map(type => (
+                            <SelectItem key={type} value={type}>
+                              {getVehicleTypeLabel(type)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     
-                    <div className="space-y-2">
-                      <Label htmlFor="baseFare">Taxa Base (R$)</Label>
-                      <Input
-                        id="baseFare"
-                        type="number"
-                        step="0.10"
-                        value={newConfig.base_fare}
-                        onChange={(e) => setNewConfig({...newConfig, base_fare: parseFloat(e.target.value) || 0})}
-                      />
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="pricePerKm">Preço por KM (R$)</Label>
+                        <Input
+                          id="pricePerKm"
+                          type="number"
+                          step="0.10"
+                          value={newConfig.price_per_km}
+                          onChange={(e) => setNewConfig({...newConfig, price_per_km: parseFloat(e.target.value) || 0})}
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="baseFare">Taxa Base (R$)</Label>
+                        <Input
+                          id="baseFare"
+                          type="number"
+                          step="0.10"
+                          value={newConfig.base_fare}
+                          onChange={(e) => setNewConfig({...newConfig, base_fare: parseFloat(e.target.value) || 0})}
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="perMinuteRate">Por Minuto (R$)</Label>
+                        <Input
+                          id="perMinuteRate"
+                          type="number"
+                          step="0.01"
+                          value={newConfig.per_minute_rate}
+                          onChange={(e) => setNewConfig({...newConfig, per_minute_rate: parseFloat(e.target.value) || 0})}
+                        />
+                      </div>
                     </div>
                     
-                    <div className="space-y-2">
-                      <Label htmlFor="perMinuteRate">Por Minuto (R$)</Label>
-                      <Input
-                        id="perMinuteRate"
-                        type="number"
-                        step="0.01"
-                        value={newConfig.per_minute_rate}
-                        onChange={(e) => setNewConfig({...newConfig, per_minute_rate: parseFloat(e.target.value) || 0})}
-                      />
+                    <div className="flex space-x-4 pt-4">
+                      <Button 
+                        variant="outline" 
+                        className="flex-1"
+                        onClick={() => setIsAddingConfig(false)}
+                      >
+                        Cancelar
+                      </Button>
+                      <Button 
+                        className="flex-1 gradient-viaja text-white"
+                        onClick={handleAddConfig}
+                      >
+                        Adicionar Configuração
+                      </Button>
                     </div>
                   </div>
-                  
-                  <div className="flex space-x-4 pt-4">
-                    <Button 
-                      variant="outline" 
-                      className="flex-1"
-                      onClick={() => setIsAddingConfig(false)}
-                    >
-                      Cancelar
-                    </Button>
-                    <Button 
-                      className="flex-1 gradient-viaja text-white"
-                      onClick={handleAddConfig}
-                    >
-                      Adicionar Configuração
-                    </Button>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
+                </DialogContent>
+              </Dialog>
+            )}
           </div>
 
           {/* Pricing Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
             {pricingConfigs.map((config) => (
               <Card key={config.id} className={`hover:shadow-md transition-shadow ${!config.is_active ? 'opacity-60' : ''}`}>
                 <CardHeader>
@@ -344,10 +349,12 @@ const PricingConfig = () => {
           <Card className="bg-gradient-viaja-subtle border-viaja-blue/20">
             <CardContent className="pt-6">
               <div className="text-center">
-                <h3 className="font-semibold text-viaja-blue mb-2">💡 Informações sobre Preços</h3>
+                <h3 className="font-semibold text-viaja-blue mb-2">🚗 Tipos de Veículos Disponíveis</h3>
+                <p className="text-sm text-gray-700 mb-2">
+                  <strong>Econômico:</strong> Veículos básicos e eficientes para transporte padrão
+                </p>
                 <p className="text-sm text-gray-700">
-                  Os preços são calculados automaticamente com base na distância percorrida e tempo de viagem.
-                  Os usuários não veem estes valores, pois o transporte é gratuito e custeado pela prefeitura.
+                  <strong>Conforto:</strong> Veículos com mais espaço e conforto para necessidades especiais
                 </p>
               </div>
             </CardContent>

@@ -23,7 +23,8 @@ export const usePricingData = () => {
       const { data, error } = await supabase
         .from('pricing_config')
         .select('*')
-        .order('created_at', { ascending: false });
+        .in('vehicle_type', ['economico', 'conforto'])
+        .order('vehicle_type', { ascending: true });
 
       if (error) throw error;
 
@@ -38,6 +39,18 @@ export const usePricingData = () => {
 
   const addPricingConfig = async (config: Omit<PricingConfig, 'id' | 'created_at' | 'updated_at'>) => {
     try {
+      // Verificar se já existe configuração para este tipo de veículo
+      const { data: existing } = await supabase
+        .from('pricing_config')
+        .select('id')
+        .eq('vehicle_type', config.vehicle_type)
+        .single();
+
+      if (existing) {
+        toast.error('Já existe configuração para este tipo de veículo');
+        return null;
+      }
+
       const { data, error } = await supabase
         .from('pricing_config')
         .insert(config)

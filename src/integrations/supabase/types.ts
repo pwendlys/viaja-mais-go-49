@@ -113,6 +113,7 @@ export type Database = {
           vehicle_color: string | null
           vehicle_model: string
           vehicle_plate: string
+          vehicle_type: string | null
           vehicle_year: number | null
         }
         Insert: {
@@ -127,6 +128,7 @@ export type Database = {
           vehicle_color?: string | null
           vehicle_model: string
           vehicle_plate: string
+          vehicle_type?: string | null
           vehicle_year?: number | null
         }
         Update: {
@@ -141,6 +143,7 @@ export type Database = {
           vehicle_color?: string | null
           vehicle_model?: string
           vehicle_plate?: string
+          vehicle_type?: string | null
           vehicle_year?: number | null
         }
         Relationships: [
@@ -247,6 +250,7 @@ export type Database = {
           medical_condition: string | null
           mobility_needs: string | null
           neighborhood: string | null
+          preferred_vehicle_type: string | null
           state: string | null
           sus_number: string | null
         }
@@ -259,6 +263,7 @@ export type Database = {
           medical_condition?: string | null
           mobility_needs?: string | null
           neighborhood?: string | null
+          preferred_vehicle_type?: string | null
           state?: string | null
           sus_number?: string | null
         }
@@ -271,6 +276,7 @@ export type Database = {
           medical_condition?: string | null
           mobility_needs?: string | null
           neighborhood?: string | null
+          preferred_vehicle_type?: string | null
           state?: string | null
           sus_number?: string | null
         }

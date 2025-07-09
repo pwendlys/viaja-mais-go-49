@@ -9,6 +9,7 @@ export interface Driver {
     year: number;
     color: string;
     plate: string;
+    type: 'economico' | 'conforto';
   };
   rating: number;
   totalRides: number;
@@ -30,6 +31,7 @@ export interface Patient {
   mobility_needs?: string;
   emergency_contact_name?: string;
   emergency_contact_phone?: string;
+  preferred_vehicle_type?: 'economico' | 'conforto';
 }
 
 export interface Ride {
@@ -56,6 +58,7 @@ export interface Ride {
   notes?: string;
   medicalNotes?: string;
   appointmentType?: string;
+  vehicleType?: 'economico' | 'conforto';
 }
 
 export interface UserProfile {
@@ -79,4 +82,15 @@ export interface FavoriteLocation {
   lat: number;
   lng: number;
   createdAt: Date;
+}
+
+export interface PricingConfig {
+  id: string;
+  vehicle_type: 'economico' | 'conforto';
+  price_per_km: number;
+  base_fare: number;
+  per_minute_rate: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 }
