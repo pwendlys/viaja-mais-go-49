@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import AdminHeader from '@/components/admin/AdminHeader';
+import { useAnalyticsData } from '@/hooks/useAnalyticsData';
 import { 
   BarChart, 
   Bar, 
@@ -24,6 +25,7 @@ import {
 
 const AnalyticsDashboard = () => {
   const [selectedPeriod, setSelectedPeriod] = useState('month');
+  const { stats, dailyStats, ridesByHour, topRoutes, userTypes, isLoading } = useAnalyticsData();
 
   const adminData = {
     name: 'Ana Administradora',
@@ -31,50 +33,20 @@ const AnalyticsDashboard = () => {
     role: 'Super Admin'
   };
 
-  const kpis = {
-    totalRevenue: 245680.50,
-    totalRides: 15847,
-    activeUsers: 12547,
-    activeDrivers: 2834,
-    avgRating: 4.7,
-    completionRate: 94.2
-  };
+  const COLORS = ['#3b82f6', '#10b981', '#f59e0b'];
 
-  const dailyStats = [
-    { date: '01/01', rides: 245, revenue: 4580, users: 189 },
-    { date: '02/01', rides: 312, revenue: 5230, users: 234 },
-    { date: '03/01', rides: 289, revenue: 4890, users: 201 },
-    { date: '04/01', rides: 378, revenue: 6120, users: 298 },
-    { date: '05/01', rides: 456, revenue: 7340, users: 356 },
-    { date: '06/01', reads: 523, revenue: 8450, users: 412 },
-    { date: '07/01', rides: 412, revenue: 6890, users: 334 }
-  ];
-
-  const ridesByHour = [
-    { hour: '00h', rides: 12 },
-    { hour: '04h', rides: 8 },
-    { hour: '08h', rides: 145 },
-    { hour: '12h', rides: 234 },
-    { hour: '16h', rides: 189 },
-    { hour: '20h', rides: 267 },
-    { hour: '23h', rides: 45 }
-  ];
-
-  const topRoutes = [
-    { route: 'Aeroporto → Centro', rides: 1247, revenue: 28950 },
-    { route: 'Shopping → Residencial', rides: 1034, revenue: 19870 },
-    { route: 'Universidade → Centro', rides: 892, revenue: 15680 },
-    { route: 'Hospital → Residencial', rides: 654, revenue: 12340 },
-    { route: 'Centro → Aeroporto', rides: 578, revenue: 13450 }
-  ];
-
-  const userTypes = [
-    { name: 'Usuários Regulares', value: 8547, color: '#3b82f6' },
-    { name: 'Usuários Premium', value: 2834, color: '#f59e0b' },
-    { name: 'Usuários Corporativos', value: 1166, color: '#10b981' }
-  ];
-
-  const COLORS = ['#3b82f6', '#f59e0b', '#10b981'];
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <AdminHeader admin={adminData} />
+        <div className="container mx-auto px-4 py-6 max-w-7xl">
+          <div className="flex justify-center items-center h-64">
+            <div className="text-lg">Carregando dados do analytics...</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -106,7 +78,7 @@ const AnalyticsDashboard = () => {
                   <div>
                     <p className="text-sm font-medium text-gray-600">Receita Total</p>
                     <p className="text-lg font-bold text-green-600">
-                      R$ {kpis.totalRevenue.toLocaleString('pt-BR')}
+                      R$ {stats.totalRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </p>
                   </div>
                   <DollarSign className="h-6 w-6 text-green-600" />
@@ -120,7 +92,7 @@ const AnalyticsDashboard = () => {
                   <div>
                     <p className="text-sm font-medium text-gray-600">Total Corridas</p>
                     <p className="text-lg font-bold text-viaja-blue">
-                      {kpis.totalRides.toLocaleString()}
+                      {stats.totalRides.toLocaleString()}
                     </p>
                   </div>
                   <Car className="h-6 w-6 text-viaja-blue" />
@@ -134,7 +106,7 @@ const AnalyticsDashboard = () => {
                   <div>
                     <p className="text-sm font-medium text-gray-600">Usuários Ativos</p>
                     <p className="text-lg font-bold text-viaja-green">
-                      {kpis.activeUsers.toLocaleString()}
+                      {stats.activeUsers.toLocaleString()}
                     </p>
                   </div>
                   <Users className="h-6 w-6 text-viaja-green" />
@@ -148,7 +120,7 @@ const AnalyticsDashboard = () => {
                   <div>
                     <p className="text-sm font-medium text-gray-600">Motoristas Ativos</p>
                     <p className="text-lg font-bold text-viaja-orange">
-                      {kpis.activeDrivers.toLocaleString()}
+                      {stats.activeDrivers.toLocaleString()}
                     </p>
                   </div>
                   <Car className="h-6 w-6 text-viaja-orange" />
@@ -161,7 +133,7 @@ const AnalyticsDashboard = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Avaliação Média</p>
-                    <p className="text-lg font-bold text-yellow-600">{kpis.avgRating}</p>
+                    <p className="text-lg font-bold text-yellow-600">{stats.avgRating || 'N/A'}</p>
                   </div>
                   <div className="text-xl">⭐</div>
                 </div>
@@ -173,7 +145,7 @@ const AnalyticsDashboard = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Taxa Conclusão</p>
-                    <p className="text-lg font-bold text-green-600">{kpis.completionRate}%</p>
+                    <p className="text-lg font-bold text-green-600">{stats.completionRate}%</p>
                   </div>
                   <TrendingUp className="h-6 w-6 text-green-600" />
                 </div>
@@ -218,7 +190,7 @@ const AnalyticsDashboard = () => {
 
             <Card>
               <CardHeader>
-                <CardTitle>Distribuição de Usuários</CardTitle>
+                <CardTitle>Preferências de Veículos</CardTitle>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
@@ -268,22 +240,28 @@ const AnalyticsDashboard = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {topRoutes.map((route, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <Badge variant="secondary">{index + 1}</Badge>
-                        <div>
-                          <div className="font-medium">{route.route}</div>
-                          <div className="text-sm text-gray-600">{route.rides} corridas</div>
+                  {topRoutes.length > 0 ? (
+                    topRoutes.map((route, index) => (
+                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          <Badge variant="secondary">{index + 1}</Badge>
+                          <div>
+                            <div className="font-medium">{route.route}</div>
+                            <div className="text-sm text-gray-600">{route.rides} corridas</div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-semibold text-viaja-green">
+                            R$ {route.revenue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </div>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className="font-semibold text-viaja-green">
-                          R$ {route.revenue.toLocaleString()}
-                        </div>
-                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      Nenhuma rota encontrada
                     </div>
-                  ))}
+                  )}
                 </div>
               </CardContent>
             </Card>

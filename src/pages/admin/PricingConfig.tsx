@@ -68,15 +68,15 @@ const PricingConfig = () => {
 
   const getVehicleTypeLabel = (type: string) => {
     const labels = {
-      'economico': 'Econômico',
-      'conforto': 'Conforto'
+      'tradicional': 'Tradicional',
+      'acessivel': 'Acessível'
     };
     return labels[type as keyof typeof labels] || type;
   };
 
   const availableVehicleTypes = () => {
     const existingTypes = pricingConfigs.map(config => config.vehicle_type);
-    return ['economico', 'conforto'].filter(type => !existingTypes.includes(type));
+    return ['tradicional', 'acessivel'].filter(type => !existingTypes.includes(type));
   };
 
   if (isLoading) {
@@ -102,7 +102,7 @@ const PricingConfig = () => {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-800">Configuração de Preços por Tipo de Veículo</h1>
-              <p className="text-gray-600">Gerencie os valores para veículos Econômicos e de Conforto</p>
+              <p className="text-gray-600">Gerencie os valores para veículos Tradicionais e Acessíveis</p>
             </div>
             
             {availableVehicleTypes().length > 0 && (
@@ -351,10 +351,10 @@ const PricingConfig = () => {
               <div className="text-center">
                 <h3 className="font-semibold text-viaja-blue mb-2">🚗 Tipos de Veículos Disponíveis</h3>
                 <p className="text-sm text-gray-700 mb-2">
-                  <strong>Econômico:</strong> Veículos básicos e eficientes para transporte padrão
+                  <strong>Tradicional:</strong> Veículos padrão para transporte regular
                 </p>
                 <p className="text-sm text-gray-700">
-                  <strong>Conforto:</strong> Veículos com mais espaço e conforto para necessidades especiais
+                  <strong>Acessível:</strong> Veículos adaptados para pessoas com mobilidade reduzida
                 </p>
               </div>
             </CardContent>

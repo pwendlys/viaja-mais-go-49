@@ -23,7 +23,7 @@ export const usePricingData = () => {
       const { data, error } = await supabase
         .from('pricing_config')
         .select('*')
-        .in('vehicle_type', ['economico', 'conforto'])
+        .in('vehicle_type', ['tradicional', 'acessivel'])
         .order('vehicle_type', { ascending: true });
 
       if (error) throw error;

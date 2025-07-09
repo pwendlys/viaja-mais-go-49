@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { DollarSign, Edit, Save, X, MapPin, Clock, Car } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -24,8 +23,8 @@ const DriverPricingTab = () => {
 
   const getVehicleTypeLabel = (type: string) => {
     const labels = {
-      'economico': 'Econômico',
-      'conforto': 'Conforto'
+      'tradicional': 'Tradicional',
+      'acessivel': 'Acessível'
     };
     return labels[type as keyof typeof labels] || type;
   };
@@ -67,7 +66,7 @@ const DriverPricingTab = () => {
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold">Configuração de Preços por Tipo de Veículo</h3>
-          <p className="text-gray-600">Gerencie os valores para veículos Econômicos e de Conforto</p>
+          <p className="text-gray-600">Gerencie os valores para veículos Tradicionais e Acessíveis</p>
         </div>
       </div>
 
@@ -223,12 +222,12 @@ const DriverPricingTab = () => {
             <h4 className="font-semibold text-blue-900 mb-2">🚗 Tipos de Veículos</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-blue-800">
               <div>
-                <p className="font-medium">Econômico:</p>
-                <p>Veículos básicos para transporte padrão</p>
+                <p className="font-medium">Tradicional:</p>
+                <p>Veículos padrão para transporte regular</p>
               </div>
               <div>
-                <p className="font-medium">Conforto:</p>
-                <p>Veículos com mais espaço para necessidades especiais</p>
+                <p className="font-medium">Acessível:</p>
+                <p>Veículos adaptados para mobilidade reduzida</p>
               </div>
             </div>
           </div>

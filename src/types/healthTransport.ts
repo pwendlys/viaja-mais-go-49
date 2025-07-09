@@ -9,7 +9,7 @@ export interface Driver {
     year: number;
     color: string;
     plate: string;
-    type: 'economico' | 'conforto';
+    type: 'tradicional' | 'acessivel';
   };
   rating: number;
   totalRides: number;
@@ -31,7 +31,7 @@ export interface Patient {
   mobility_needs?: string;
   emergency_contact_name?: string;
   emergency_contact_phone?: string;
-  preferred_vehicle_type?: 'economico' | 'conforto';
+  preferred_vehicle_type?: 'tradicional' | 'acessivel';
 }
 
 export interface Ride {
@@ -58,7 +58,7 @@ export interface Ride {
   notes?: string;
   medicalNotes?: string;
   appointmentType?: string;
-  vehicleType?: 'economico' | 'conforto';
+  vehicleType?: 'tradicional' | 'acessivel';
 }
 
 export interface UserProfile {
@@ -86,7 +86,7 @@ export interface FavoriteLocation {
 
 export interface PricingConfig {
   id: string;
-  vehicle_type: 'economico' | 'conforto';
+  vehicle_type: 'tradicional' | 'acessivel';
   price_per_km: number;
   base_fare: number;
   per_minute_rate: number;
