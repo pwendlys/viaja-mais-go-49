@@ -15,7 +15,12 @@ interface UserProfileData {
     sus_number?: string;
     address: string;
     city?: string;
+    state?: string;
     neighborhood?: string;
+    medical_condition?: string;
+    mobility_needs?: string;
+    emergency_contact_name?: string;
+    emergency_contact_phone?: string;
   };
   stats: {
     totalTrips: number;
