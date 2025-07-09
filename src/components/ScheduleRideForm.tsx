@@ -60,33 +60,6 @@ const ScheduleRideForm = ({ onScheduleRide, onRouteChange }: ScheduleRideFormPro
     }
   ];
 
-  const hospitalSuggestions = [
-    {
-      name: 'Hospital Monte Sinai',
-      address: 'Av. Barão do Rio Branco, 3596 - Passos, Juiz de Fora - MG',
-      lat: -21.7608,
-      lng: -43.3667
-    },
-    {
-      name: 'Hospital e Maternidade Therezinha de Jesus',
-      address: 'Rua Cel. Antônio Augusto de Carvalho, 1 - São Mateus, Juiz de Fora - MG',
-      lat: -21.7500,
-      lng: -43.3600
-    },
-    {
-      name: 'Hospital Regional João Penido (HU-UFJF)',
-      address: 'Rua José Lourenço Kelmer, s/n - São Pedro, Juiz de Fora - MG',
-      lat: -21.7554,
-      lng: -43.3636
-    },
-    {
-      name: 'Hospital Municipal (UPA Leste)',
-      address: 'Rua Francisco Valadares, 1000 - Linhares, Juiz de Fora - MG',
-      lat: -21.7400,
-      lng: -43.3500
-    }
-  ];
-
   const timeSlots = [
     '07:00', '07:30', '08:00', '08:30', '09:00', '09:30',
     '10:00', '10:30', '11:00', '11:30', '12:00', '12:30',
@@ -186,7 +159,7 @@ const ScheduleRideForm = ({ onScheduleRide, onRouteChange }: ScheduleRideFormPro
             onLocationSelect={handleDestinationSelect}
             placeholder="Digite o endereço de destino..."
             className="w-full"
-            hospitalSuggestions={hospitalSuggestions}
+            isDestination={true}
           />
         </div>
 
