@@ -117,6 +117,98 @@ serve(async (req) => {
         })
       }
 
+      case 'approve_user': {
+        const { user_id, approved, rejection_reason, admin_id } = params
+
+        const status = approved ? 'approved' : 'rejected'
+        
+        const { error } = await supabaseClient
+          .from('user_approvals')
+          .update({
+            status,
+            reviewed_by: admin_id,
+            reviewed_at: new Date().toISOString(),
+            rejection_reason: approved ? null : rejection_reason
+          })
+          .eq('user_id', user_id)
+
+        if (error) throw error
+
+        // Also update profile status
+        const { error: profileError } = await supabaseClient
+          .from('profiles')
+          .update({ is_active: approved })
+          .eq('id', user_id)
+
+        if (profileError) throw profileError
+
+        return new Response(JSON.stringify({ success: true }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+
+      case 'get_pending_approvals': {
+        const { data: approvals, error } = await supabaseClient
+          .from('user_approvals')
+          .select(`
+            *,
+            profiles (full_name, phone, user_type, created_at)
+          `)
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false })
+
+        if (error) throw error
+
+        return new Response(JSON.stringify({ approvals }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+
+      case 'create_driver_payment': {
+        const { driver_id, amount, notes, reference_rides, admin_id } = params
+
+        const { data, error } = await supabaseClient
+          .from('driver_payments')
+          .insert({
+            driver_id,
+            amount,
+            notes,
+            reference_rides: reference_rides || [],
+            created_by: admin_id
+          })
+          .select()
+
+        if (error) throw error
+
+        return new Response(JSON.stringify({ payment: data[0] }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+
+      case 'get_driver_payments': {
+        const { driver_id } = params
+
+        let query = supabaseClient
+          .from('driver_payments')
+          .select(`
+            *,
+            profiles!driver_payments_driver_id_fkey (full_name)
+          `)
+          .order('created_at', { ascending: false })
+
+        if (driver_id) {
+          query = query.eq('driver_id', driver_id)
+        }
+
+        const { data: payments, error } = await query
+
+        if (error) throw error
+
+        return new Response(JSON.stringify({ payments }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+
       default:
         throw new Error('Invalid action')
     }

@@ -197,6 +197,73 @@ export class HealthTransportApiService {
     return data
   }
 
+  async manageUser(user_id: string, action_type: 'activate' | 'deactivate') {
+    const { data, error } = await supabase.functions.invoke('admin-dashboard', {
+      body: {
+        action: 'manage_user',
+        user_id,
+        action_type
+      }
+    })
+
+    if (error) throw error
+    return data
+  }
+
+  async approveUser(user_id: string, approved: boolean, rejection_reason?: string, admin_id?: string) {
+    const { data, error } = await supabase.functions.invoke('admin-dashboard', {
+      body: {
+        action: 'approve_user',
+        user_id,
+        approved,
+        rejection_reason,
+        admin_id
+      }
+    })
+
+    if (error) throw error
+    return data
+  }
+
+  async getPendingApprovals() {
+    const { data, error } = await supabase.functions.invoke('admin-dashboard', {
+      body: {
+        action: 'get_pending_approvals'
+      }
+    })
+
+    if (error) throw error
+    return data
+  }
+
+  async createDriverPayment(driver_id: string, amount: number, notes?: string, reference_rides?: string[], admin_id?: string) {
+    const { data, error } = await supabase.functions.invoke('admin-dashboard', {
+      body: {
+        action: 'create_driver_payment',
+        driver_id,
+        amount,
+        notes,
+        reference_rides,
+        admin_id
+      }
+    })
+
+    if (error) throw error
+    return data
+  }
+
+  async getDriverPayments(driver_id?: string) {
+    const { data, error } = await supabase.functions.invoke('admin-dashboard', {
+      body: {
+        action: 'get_driver_payments',
+        driver_id
+      }
+    })
+
+    if (error) throw error
+    return data
+  }
+
   // New price calculation service
   async calculateRidePrice(distance_km: number, duration_minutes: number, vehicle_type: string = 'conforto') {
     const { data, error } = await supabase.functions.invoke('calculate-ride-price', {
