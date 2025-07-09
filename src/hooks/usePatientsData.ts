@@ -17,6 +17,8 @@ interface Patient {
   documentsStatus: string;
   emergencyContactName: string;
   emergencyContactPhone: string;
+  rating: number;
+  totalRides: number;
 }
 
 export const usePatientsData = () => {
@@ -64,28 +66,58 @@ export const usePatientsData = () => {
         console.error('Erro ao buscar aprovações:', approvalsError);
       }
 
+      // Buscar estatísticas de corridas para cada paciente
+      const { data: ridesData, error: ridesError } = await supabase
+        .from('rides')
+        .select('patient_id, patient_rating')
+        .not('patient_rating', 'is', null);
+
+      if (ridesError) {
+        console.error('Erro ao buscar corridas:', ridesError);
+      }
+
       // Criar mapa de aprovações
       const approvalsMap = (approvalsData || []).reduce((acc, approval) => {
         acc[approval.user_id] = approval.status;
         return acc;
       }, {} as Record<string, string>);
 
-      const formattedPatients = (profilesData || []).map(profile => ({
-        id: profile.id,
-        name: profile.full_name || 'Nome não informado',
-        email: '', // Email não está disponível via profiles por segurança
-        phone: profile.phone || '',
-        address: (profile.patients as any)?.[0]?.address || 'Não informado',
-        susNumber: (profile.patients as any)?.[0]?.sus_number || 'Não informado',
-        medicalCondition: (profile.patients as any)?.[0]?.medical_condition || 'Não informado',
-        mobilityNeeds: (profile.patients as any)?.[0]?.mobility_needs || 'Não informado',
-        status: profile.is_active ? 'Ativo' : 'Inativo',
-        joinDate: profile.created_at || '',
-        documentsStatus: approvalsMap[profile.id] === 'approved' ? 'Aprovado' : 
-                        approvalsMap[profile.id] === 'rejected' ? 'Rejeitado' : 'Pendente',
-        emergencyContactName: (profile.patients as any)?.[0]?.emergency_contact_name || '',
-        emergencyContactPhone: (profile.patients as any)?.[0]?.emergency_contact_phone || ''
-      }));
+      // Criar mapa de estatísticas de corridas
+      const ridesStatsMap = (ridesData || []).reduce((acc, ride) => {
+        if (!acc[ride.patient_id]) {
+          acc[ride.patient_id] = { totalRides: 0, totalRating: 0, ratingCount: 0 };
+        }
+        acc[ride.patient_id].totalRides += 1;
+        if (ride.patient_rating) {
+          acc[ride.patient_id].totalRating += ride.patient_rating;
+          acc[ride.patient_id].ratingCount += 1;
+        }
+        return acc;
+      }, {} as Record<string, { totalRides: number; totalRating: number; ratingCount: number }>);
+
+      const formattedPatients = (profilesData || []).map(profile => {
+        const rideStats = ridesStatsMap[profile.id] || { totalRides: 0, totalRating: 0, ratingCount: 0 };
+        const averageRating = rideStats.ratingCount > 0 ? rideStats.totalRating / rideStats.ratingCount : 0;
+
+        return {
+          id: profile.id,
+          name: profile.full_name || 'Nome não informado',
+          email: '', // Email não está disponível via profiles por segurança
+          phone: profile.phone || '',
+          address: (profile.patients as any)?.[0]?.address || 'Não informado',
+          susNumber: (profile.patients as any)?.[0]?.sus_number || 'Não informado',
+          medicalCondition: (profile.patients as any)?.[0]?.medical_condition || 'Não informado',
+          mobilityNeeds: (profile.patients as any)?.[0]?.mobility_needs || 'Não informado',
+          status: profile.is_active ? 'Ativo' : 'Inativo',
+          joinDate: profile.created_at || '',
+          documentsStatus: approvalsMap[profile.id] === 'approved' ? 'Aprovado' : 
+                          approvalsMap[profile.id] === 'rejected' ? 'Rejeitado' : 'Pendente',
+          emergencyContactName: (profile.patients as any)?.[0]?.emergency_contact_name || '',
+          emergencyContactPhone: (profile.patients as any)?.[0]?.emergency_contact_phone || '',
+          rating: averageRating,
+          totalRides: rideStats.totalRides
+        };
+      });
 
       console.log('Pacientes formatados:', formattedPatients.length);
       setPatients(formattedPatients);
