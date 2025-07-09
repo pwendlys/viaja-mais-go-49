@@ -1,15 +1,16 @@
+
 import React, { useState } from 'react';
 import { MapPin, Clock, User, History, Settings, Calendar, Heart, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
-import ImprovedRideRequest from '@/components/ImprovedRideRequest';
 import RideStatus from '@/components/RideStatus';
 import UserHeader from '@/components/user/UserHeader';
 import MapView from '@/components/MapView';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import TabbedRideRequest from '@/components/TabbedRideRequest';
+import { toast } from 'sonner';
 
 interface Location {
   lat: number;
@@ -44,35 +45,6 @@ const UserDashboard = () => {
     }
   ];
 
-  // Principais hospitais de Juiz de Fora
-  const healthFacilities = [
-    {
-      name: 'Hospital Monte Sinai',
-      address: 'Av. Barão do Rio Branco, 3596 - Passos, Juiz de Fora - MG',
-      type: 'Hospital Privado'
-    },
-    {
-      name: 'Hospital e Maternidade Therezinha de Jesus',
-      address: 'Rua Cel. Antônio Augusto de Carvalho, 1 - São Mateus, Juiz de Fora - MG',
-      type: 'Hospital Privado'
-    },
-    {
-      name: 'Hospital Regional João Penido (HU-UFJF)',
-      address: 'Rua José Lourenço Kelmer, s/n - São Pedro, Juiz de Fora - MG',
-      type: 'Hospital Universitário'
-    },
-    {
-      name: 'Hospital Municipal (UPA Leste)',
-      address: 'Rua Francisco Valadares, 1000 - Linhares, Juiz de Fora - MG',
-      type: 'Hospital Municipal'
-    },
-    {
-      name: 'Hospital Policlínica de Juiz de Fora',
-      address: 'Av. Independência, 2500 - Centro, Juiz de Fora - MG',
-      type: 'Hospital Privado'
-    }
-  ];
-
   const handleRequestRide = (vehicleType: string, pickup: string, destination: string) => {
     setRideState('searching');
     toast.success(`Solicitando ${vehicleType} de ${pickup} para ${destination}`);
@@ -99,14 +71,6 @@ const UserDashboard = () => {
 
   const handleRateRide = (rating: number) => {
     setRideState('idle');
-  };
-
-  const handleSelectHealthFacility = (facility: any) => {
-    setSelectedDestination(facility.address);
-    const rideRequestElement = document.getElementById('ride-request-section');
-    if (rideRequestElement) {
-      rideRequestElement.scrollIntoView({ behavior: 'smooth' });
-    }
   };
 
   const handleRouteChange = (origin: Location | null, destination: Location | null) => {
@@ -274,42 +238,6 @@ const UserDashboard = () => {
                   <Calendar className="h-4 w-4 mr-2" />
                   Agendar Transporte
                 </Button>
-              </CardContent>
-            </Card>
-
-            {/* Health Services */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Heart className="h-5 w-5" />
-                  <span>Principais Hospitais</span>
-                </CardTitle>
-                <p className="text-xs text-gray-500">Clique para definir como destino</p>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {healthFacilities.map((facility, index) => (
-                  <button
-                    key={index}
-                    onClick={() => handleSelectHealthFacility(facility)}
-                    className="w-full text-left p-3 rounded-lg border border-gray-200 hover:border-viaja-blue hover:bg-gradient-viaja-subtle transition-all duration-200 group"
-                  >
-                    <div className="flex items-start space-x-3">
-                      <div className="w-2 h-2 bg-viaja-blue rounded-full mt-2 group-hover:bg-viaja-orange transition-colors"></div>
-                      <div className="flex-1">
-                        <h4 className="font-medium text-gray-800 text-sm group-hover:text-viaja-blue transition-colors">
-                          {facility.name}
-                        </h4>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {facility.type}
-                        </p>
-                        <p className="text-xs text-gray-400 mt-1 line-clamp-2">
-                          {facility.address}
-                        </p>
-                      </div>
-                      <MapPin className="h-4 w-4 text-gray-400 group-hover:text-viaja-blue transition-colors" />
-                    </div>
-                  </button>
-                ))}
               </CardContent>
             </Card>
 

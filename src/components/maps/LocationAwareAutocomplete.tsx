@@ -1,10 +1,11 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { MapPin, Search, X, Navigation } from 'lucide-react';
+import { MapPin, Search, X, Navigation, Heart } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useMapboxApi } from '@/hooks/useMapboxApi';
 import { toast } from 'sonner';
+import FavoriteLocationModal from './FavoriteLocationModal';
 
 interface AddressSuggestion {
   id: string;
@@ -19,7 +20,7 @@ interface LocationAwareAutocompleteProps {
   placeholder?: string;
   className?: string;
   showCurrentLocation?: boolean;
-  hospitalSuggestions?: Array<{ name: string; address: string; lat?: number; lng?: number }>;
+  isDestination?: boolean;
 }
 
 const LocationAwareAutocomplete = ({
@@ -29,13 +30,16 @@ const LocationAwareAutocomplete = ({
   placeholder = "Digite um endereço...",
   className = "",
   showCurrentLocation = false,
-  hospitalSuggestions = []
+  isDestination = false
 }: LocationAwareAutocompleteProps) => {
   const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [gettingLocation, setGettingLocation] = useState(false);
+  const [favorites, setFavorites] = useState<any[]>([]);
+  const [showFavoriteModal, setShowFavoriteModal] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number; address: string } | null>(null);
   
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -43,7 +47,13 @@ const LocationAwareAutocomplete = ({
   
   const { searchPlaces, reverseGeocode } = useMapboxApi();
 
-  // Fechar sugestões quando clicar fora
+  // Load favorites from localStorage
+  useEffect(() => {
+    const savedFavorites = JSON.parse(localStorage.getItem('favoriteLocations') || '[]');
+    setFavorites(savedFavorites);
+  }, []);
+
+  // Close suggestions when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
@@ -58,21 +68,22 @@ const LocationAwareAutocomplete = ({
     };
   }, []);
 
-  // Buscar sugestões com debounce
+  // Search suggestions with debounce
   useEffect(() => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
 
     if (value.length < 3) {
-      // Mostrar hospitais quando não há texto suficiente para busca
-      if (hospitalSuggestions.length > 0 && value.length === 0) {
-        const hospitalSuggestionsFormatted = hospitalSuggestions.map((hospital, index) => ({
-          id: `hospital-${index}`,
-          place_name: `${hospital.name} - ${hospital.address}`,
-          center: [hospital.lng || -43.3636, hospital.lat || -21.7554] as [number, number]
+      // Show favorites when input is empty and it's destination field
+      if (isDestination && value.length === 0 && favorites.length > 0) {
+        const favoriteSuggestions = favorites.map((fav, index) => ({
+          id: `favorite-${index}`,
+          place_name: `${fav.name} - ${fav.address}`,
+          center: [fav.lng, fav.lat] as [number, number],
+          isFavorite: true
         }));
-        setSuggestions(hospitalSuggestionsFormatted);
+        setSuggestions(favoriteSuggestions);
         setShowSuggestions(true);
       } else {
         setSuggestions([]);
@@ -115,7 +126,7 @@ const LocationAwareAutocomplete = ({
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [value, searchPlaces, hospitalSuggestions]);
+  }, [value, searchPlaces, favorites, isDestination]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
@@ -124,15 +135,23 @@ const LocationAwareAutocomplete = ({
   };
 
   const handleSuggestionClick = (suggestion: AddressSuggestion) => {
-    onChange(suggestion.place_name);
-    onLocationSelect({
+    const location = {
       lat: suggestion.center[1],
       lng: suggestion.center[0],
       address: suggestion.place_name
-    });
+    };
+
+    onChange(suggestion.place_name);
+    onLocationSelect(location);
     setShowSuggestions(false);
     setSelectedIndex(-1);
     setSuggestions([]);
+
+    // If it's destination and not a favorite, show option to save as favorite
+    if (isDestination && !(suggestion as any).isFavorite) {
+      setSelectedLocation(location);
+      setShowFavoriteModal(true);
+    }
   };
 
   const handleGetCurrentLocation = () => {
@@ -215,86 +234,99 @@ const LocationAwareAutocomplete = ({
   };
 
   return (
-    <div ref={containerRef} className={`relative ${className}`}>
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-        <Input
-          ref={inputRef}
-          type="text"
-          value={value}
-          onChange={handleInputChange}
-          onKeyDown={handleKeyDown}
-          onFocus={() => {
-            if (hospitalSuggestions.length > 0 && value.length === 0) {
-              const hospitalSuggestionsFormatted = hospitalSuggestions.map((hospital, index) => ({
-                id: `hospital-${index}`,
-                place_name: `${hospital.name} - ${hospital.address}`,
-                center: [hospital.lng || -43.3636, hospital.lat || -21.7554] as [number, number]
-              }));
-              setSuggestions(hospitalSuggestionsFormatted);
-              setShowSuggestions(true);
-            }
-          }}
-          placeholder={placeholder}
-          className="pl-10 pr-20"
-          autoComplete="off"
-        />
-        
-        <div className="absolute right-1 top-1/2 transform -translate-y-1/2 flex items-center space-x-1">
-          {showCurrentLocation && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0"
-              onClick={handleGetCurrentLocation}
-              disabled={gettingLocation}
-              title="Usar localização atual"
-            >
-              <Navigation className={`h-4 w-4 ${gettingLocation ? 'animate-spin' : ''}`} />
-            </Button>
-          )}
+    <>
+      <div ref={containerRef} className={`relative ${className}`}>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input
+            ref={inputRef}
+            type="text"
+            value={value}
+            onChange={handleInputChange}
+            onKeyDown={handleKeyDown}
+            onFocus={() => {
+              if (isDestination && value.length === 0 && favorites.length > 0) {
+                const favoriteSuggestions = favorites.map((fav, index) => ({
+                  id: `favorite-${index}`,
+                  place_name: `${fav.name} - ${fav.address}`,
+                  center: [fav.lng, fav.lat] as [number, number],
+                  isFavorite: true
+                }));
+                setSuggestions(favoriteSuggestions);
+                setShowSuggestions(true);
+              }
+            }}
+            placeholder={placeholder}
+            className="pl-10 pr-20"
+            autoComplete="off"
+          />
           
-          {value && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0"
-              onClick={clearInput}
-            >
-              <X className="h-4 w-4" />
-            </Button>
+          <div className="absolute right-1 top-1/2 transform -translate-y-1/2 flex items-center space-x-1">
+            {showCurrentLocation && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0"
+                onClick={handleGetCurrentLocation}
+                disabled={gettingLocation}
+                title="Usar localização atual"
+              >
+                <Navigation className={`h-4 w-4 ${gettingLocation ? 'animate-spin' : ''}`} />
+              </Button>
+            )}
+            
+            {value && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0"
+                onClick={clearInput}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+
+          {isLoading && (
+            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+            </div>
           )}
         </div>
 
-        {isLoading && (
-          <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+        {showSuggestions && suggestions.length > 0 && (
+          <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+            {suggestions.map((suggestion, index) => (
+              <button
+                key={suggestion.id}
+                type="button"
+                className={`w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center space-x-3 border-b border-gray-100 last:border-b-0 ${
+                  index === selectedIndex ? 'bg-blue-50 border-blue-200' : ''
+                }`}
+                onClick={() => handleSuggestionClick(suggestion)}
+              >
+                {(suggestion as any).isFavorite ? (
+                  <Heart className="h-4 w-4 text-viaja-blue flex-shrink-0" />
+                ) : (
+                  <MapPin className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                )}
+                <span className="text-sm text-gray-800 truncate">
+                  {suggestion.place_name}
+                </span>
+              </button>
+            ))}
           </div>
         )}
       </div>
 
-      {showSuggestions && suggestions.length > 0 && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-          {suggestions.map((suggestion, index) => (
-            <button
-              key={suggestion.id}
-              type="button"
-              className={`w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center space-x-3 border-b border-gray-100 last:border-b-0 ${
-                index === selectedIndex ? 'bg-blue-50 border-blue-200' : ''
-              }`}
-              onClick={() => handleSuggestionClick(suggestion)}
-            >
-              <MapPin className="h-4 w-4 text-gray-400 flex-shrink-0" />
-              <span className="text-sm text-gray-800 truncate">
-                {suggestion.place_name}
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
+      <FavoriteLocationModal
+        isOpen={showFavoriteModal}
+        onClose={() => setShowFavoriteModal(false)}
+        location={selectedLocation}
+      />
+    </>
   );
 };
 

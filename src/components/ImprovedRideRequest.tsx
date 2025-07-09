@@ -47,33 +47,6 @@ const ImprovedRideRequest = ({
     }
   ];
 
-  const hospitalSuggestions = [
-    {
-      name: 'Hospital Monte Sinai',
-      address: 'Av. Barão do Rio Branco, 3596 - Passos, Juiz de Fora - MG',
-      lat: -21.7608,
-      lng: -43.3667
-    },
-    {
-      name: 'Hospital e Maternidade Therezinha de Jesus',
-      address: 'Rua Cel. Antônio Augusto de Carvalho, 1 - São Mateus, Juiz de Fora - MG',
-      lat: -21.7500,
-      lng: -43.3600
-    },
-    {
-      name: 'Hospital Regional João Penido (HU-UFJF)',
-      address: 'Rua José Lourenço Kelmer, s/n - São Pedro, Juiz de Fora - MG',
-      lat: -21.7554,
-      lng: -43.3636
-    },
-    {
-      name: 'Hospital Municipal (UPA Leste)',
-      address: 'Rua Francisco Valadares, 1000 - Linhares, Juiz de Fora - MG',
-      lat: -21.7400,
-      lng: -43.3500
-    }
-  ];
-
   const handlePickupSelect = (location: Location) => {
     setPickupLocation(location);
     if (onRouteChange) {
@@ -142,7 +115,7 @@ const ImprovedRideRequest = ({
             onLocationSelect={handleDestinationSelect}
             placeholder="Digite o endereço de destino..."
             className="w-full"
-            hospitalSuggestions={hospitalSuggestions}
+            isDestination={true}
           />
         </div>
 
