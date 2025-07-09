@@ -1,7 +1,6 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { healthTransportApi } from '@/services/healthTransportApi';
 import { toast } from 'sonner';
 
 interface DriverStats {
@@ -204,18 +203,49 @@ export const useDriverData = () => {
 
         navigator.geolocation.getCurrentPosition(
           async (position) => {
-            const { latitude, longitude } = position.coords;
-            
-            // Atualizar localização e status no banco
-            await healthTransportApi.updateDriverLocation(driverInfo.id, latitude, longitude);
-            await healthTransportApi.toggleDriverAvailability(driverInfo.id, true);
-            
-            setDriverInfo(prev => prev ? { ...prev, isAvailable: true } : null);
-            toast.success('Você está online! Aguardando solicitações...');
+            try {
+              const { latitude, longitude } = position.coords;
+              
+              // Atualizar localização e status no banco diretamente
+              const { error: locationError } = await supabase
+                .from('drivers')
+                .update({
+                  current_lat: latitude,
+                  current_lng: longitude,
+                  is_available: true
+                })
+                .eq('id', driverInfo.id);
+
+              if (locationError) {
+                console.error('Erro ao atualizar localização:', locationError);
+                toast.error('Erro ao atualizar localização');
+                return;
+              }
+              
+              setDriverInfo(prev => prev ? { ...prev, isAvailable: true } : null);
+              toast.success('Você está online! Aguardando solicitações...');
+            } catch (error) {
+              console.error('Erro ao atualizar status:', error);
+              toast.error('Erro ao ficar online');
+            }
           },
           (error) => {
             console.error('Erro ao obter localização:', error);
-            toast.error('Erro ao obter sua localização. Permita o acesso à localização.');
+            let errorMessage = 'Erro ao obter sua localização.';
+            
+            switch (error.code) {
+              case error.PERMISSION_DENIED:
+                errorMessage = 'Permissão de localização negada. Permita o acesso à localização.';
+                break;
+              case error.POSITION_UNAVAILABLE:
+                errorMessage = 'Localização não disponível.';
+                break;
+              case error.TIMEOUT:
+                errorMessage = 'Tempo limite para obter localização.';
+                break;
+            }
+            
+            toast.error(errorMessage);
           },
           {
             enableHighAccuracy: true,
@@ -225,7 +255,17 @@ export const useDriverData = () => {
         );
       } else {
         // Ficar offline
-        await healthTransportApi.toggleDriverAvailability(driverInfo.id, false);
+        const { error } = await supabase
+          .from('drivers')
+          .update({ is_available: false })
+          .eq('id', driverInfo.id);
+
+        if (error) {
+          console.error('Erro ao ficar offline:', error);
+          toast.error('Erro ao alterar status');
+          return;
+        }
+
         setDriverInfo(prev => prev ? { ...prev, isAvailable: false } : null);
         toast.info('Você está offline');
       }
@@ -239,14 +279,20 @@ export const useDriverData = () => {
     if (!driverInfo?.isAvailable) return;
 
     const interval = setInterval(() => {
-      if (navigator.geolocation) {
+      if (navigator.geolocation && driverInfo?.isAvailable) {
         navigator.geolocation.getCurrentPosition(
           async (position) => {
-            const { latitude, longitude } = position.coords;
             try {
-              await healthTransportApi.updateDriverLocation(driverInfo.id, latitude, longitude);
+              const { latitude, longitude } = position.coords;
+              await supabase
+                .from('drivers')
+                .update({
+                  current_lat: latitude,
+                  current_lng: longitude
+                })
+                .eq('id', driverInfo.id);
             } catch (error) {
-              console.error('Erro ao atualizar localização:', error);
+              console.error('Erro ao atualizar localização periódica:', error);
             }
           },
           (error) => {

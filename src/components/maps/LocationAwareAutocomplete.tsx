@@ -49,8 +49,13 @@ const LocationAwareAutocomplete = ({
 
   // Load favorites from localStorage
   useEffect(() => {
-    const savedFavorites = JSON.parse(localStorage.getItem('favoriteLocations') || '[]');
-    setFavorites(savedFavorites);
+    try {
+      const savedFavorites = JSON.parse(localStorage.getItem('favoriteLocations') || '[]');
+      setFavorites(savedFavorites);
+    } catch (error) {
+      console.error('Erro ao carregar favoritos:', error);
+      setFavorites([]);
+    }
   }, []);
 
   // Close suggestions when clicking outside
@@ -92,34 +97,41 @@ const LocationAwareAutocomplete = ({
       return;
     }
 
+    setIsLoading(true);
     timeoutRef.current = setTimeout(async () => {
       try {
-        setIsLoading(true);
         const response = await searchPlaces(value, { lat: -21.7554, lng: -43.3636 });
         
-        if (response?.features) {
+        if (response?.features && Array.isArray(response.features)) {
           const uniqueSuggestions = response.features.reduce((acc: AddressSuggestion[], feature: any) => {
-            const exists = acc.find(item => item.place_name === feature.place_name);
-            if (!exists) {
-              acc.push({
-                id: feature.id,
-                place_name: feature.place_name,
-                center: feature.center
-              });
+            if (feature?.place_name && feature?.center && Array.isArray(feature.center) && feature.center.length >= 2) {
+              const exists = acc.find(item => item.place_name === feature.place_name);
+              if (!exists) {
+                acc.push({
+                  id: feature.id || `suggestion-${acc.length}`,
+                  place_name: feature.place_name,
+                  center: [feature.center[0], feature.center[1]]
+                });
+              }
             }
             return acc;
           }, []);
           
           setSuggestions(uniqueSuggestions.slice(0, 5));
           setShowSuggestions(uniqueSuggestions.length > 0);
+        } else {
+          setSuggestions([]);
+          setShowSuggestions(false);
         }
       } catch (error) {
         console.error('Erro ao buscar endereços:', error);
-        toast.error('Erro ao buscar endereços');
+        setSuggestions([]);
+        setShowSuggestions(false);
+        toast.error('Erro ao buscar endereços. Tente novamente.');
       } finally {
         setIsLoading(false);
       }
-    }, 300);
+    }, 500);
 
     return () => {
       if (timeoutRef.current) {
@@ -176,17 +188,50 @@ const LocationAwareAutocomplete = ({
               address: address
             });
             toast.success('Localização atual obtida com sucesso!');
+          } else {
+            // Fallback to coordinates if reverse geocoding fails
+            const coordsAddress = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+            onChange(coordsAddress);
+            onLocationSelect({
+              lat: latitude,
+              lng: longitude,
+              address: coordsAddress
+            });
+            toast.success('Localização atual obtida!');
           }
         } catch (error) {
           console.error('Erro ao obter endereço:', error);
-          toast.error('Erro ao obter endereço da localização atual');
+          // Use coordinates as fallback
+          const { latitude, longitude } = position.coords;
+          const coordsAddress = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+          onChange(coordsAddress);
+          onLocationSelect({
+            lat: latitude,
+            lng: longitude,
+            address: coordsAddress
+          });
+          toast.success('Localização atual obtida!');
         } finally {
           setGettingLocation(false);
         }
       },
       (error) => {
         console.error('Erro de geolocalização:', error);
-        toast.error('Erro ao obter localização atual');
+        let errorMessage = 'Erro ao obter localização atual';
+        
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage = 'Permissão de localização negada. Permita o acesso à localização.';
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMessage = 'Localização não disponível.';
+            break;
+          case error.TIMEOUT:
+            errorMessage = 'Tempo limite para obter localização.';
+            break;
+        }
+        
+        toast.error(errorMessage);
         setGettingLocation(false);
       },
       {
@@ -290,7 +335,7 @@ const LocationAwareAutocomplete = ({
           </div>
 
           {isLoading && (
-            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+            <div className="absolute right-12 top-1/2 transform -translate-y-1/2">
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
             </div>
           )}
