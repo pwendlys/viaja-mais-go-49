@@ -8,62 +8,18 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import AdminHeader from '@/components/admin/AdminHeader';
-import { toast } from 'sonner';
+import { useDriversData } from '@/hooks/useDriversData';
 
 const DriverManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const { drivers, isLoading, updateDriverStatus, approveDocuments } = useDriversData();
 
   const adminData = {
     name: 'Ana Administradora',
     email: 'admin@viajamais.com',
     role: 'Super Admin'
   };
-
-  const [drivers, setDrivers] = useState([
-    {
-      id: 1,
-      name: 'João Santos',
-      email: 'joao.santos@email.com',
-      phone: '+55 11 99999-5555',
-      status: 'Ativo',
-      vehicle: 'Honda Civic 2020',
-      plate: 'ABC-1234',
-      totalRides: 324,
-      rating: 4.9,
-      earnings: 12450.80,
-      joinDate: '2022-03-15',
-      documentsStatus: 'Aprovado'
-    },
-    {
-      id: 2,
-      name: 'Roberto Silva',
-      email: 'roberto.silva@email.com',
-      phone: '+55 11 99999-6666',
-      status: 'Pendente',
-      vehicle: 'Toyota Corolla 2019',
-      plate: 'DEF-5678',
-      totalRides: 0,
-      rating: 0,
-      earnings: 0,
-      joinDate: '2024-01-10',
-      documentsStatus: 'Pendente'
-    },
-    {
-      id: 3,
-      name: 'Carlos Oliveira',
-      email: 'carlos.o@email.com',
-      phone: '+55 11 99999-7777',
-      status: 'Suspenso',
-      vehicle: 'Hyundai HB20 2021',
-      plate: 'GHI-9012',
-      totalRides: 156,
-      rating: 3.2,
-      earnings: 4230.50,
-      joinDate: '2023-07-22',
-      documentsStatus: 'Aprovado'
-    }
-  ]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -93,32 +49,26 @@ const DriverManagement = () => {
     }
   };
 
-  const handleStatusChange = (driverId: number, newStatus: string) => {
-    setDrivers(drivers.map(driver => 
-      driver.id === driverId ? { ...driver, status: newStatus } : driver
-    ));
-    toast.success(`Status do motorista alterado para ${newStatus}`);
-  };
-
-  const handleDocumentApproval = (driverId: number, approved: boolean) => {
-    const newStatus = approved ? 'Aprovado' : 'Rejeitado';
-    setDrivers(drivers.map(driver => 
-      driver.id === driverId ? { 
-        ...driver, 
-        documentsStatus: newStatus,
-        status: approved ? 'Ativo' : driver.status
-      } : driver
-    ));
-    toast.success(`Documentos ${approved ? 'aprovados' : 'rejeitados'}`);
-  };
-
   const filteredDrivers = drivers.filter(driver => {
     const matchesSearch = driver.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         driver.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         driver.phone.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          driver.plate.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'all' || driver.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <AdminHeader admin={adminData} />
+        <div className="container mx-auto px-4 py-6 max-w-7xl">
+          <div className="flex justify-center items-center h-64">
+            <div className="text-lg">Carregando motoristas...</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -187,7 +137,7 @@ const DriverManagement = () => {
                 <div>
                   <p className="text-sm font-medium text-gray-600">Aguardando Aprovação</p>
                   <p className="text-2xl font-bold text-yellow-600">
-                    {drivers.filter(d => d.status === 'Pendente').length}
+                    {drivers.filter(d => d.documentsStatus === 'Pendente').length}
                   </p>
                 </div>
                 <FileText className="h-8 w-8 text-yellow-600" />
@@ -229,7 +179,6 @@ const DriverManagement = () => {
                     <th className="text-left py-3">Documentos</th>
                     <th className="text-left py-3">Corridas</th>
                     <th className="text-left py-3">Avaliação</th>
-                    <th className="text-left py-3">Ganhos</th>
                     <th className="text-left py-3">Ações</th>
                   </tr>
                 </thead>
@@ -239,7 +188,6 @@ const DriverManagement = () => {
                       <td className="py-4">
                         <div>
                           <div className="font-medium">{driver.name}</div>
-                          <div className="text-gray-500 text-sm">{driver.email}</div>
                           <div className="text-gray-500 text-sm">{driver.phone}</div>
                         </div>
                       </td>
@@ -264,14 +212,11 @@ const DriverManagement = () => {
                         {driver.rating > 0 ? (
                           <div className="flex items-center">
                             <span className="text-yellow-400 mr-1">⭐</span>
-                            {driver.rating}
+                            {driver.rating.toFixed(1)}
                           </div>
                         ) : (
                           <span className="text-gray-400">-</span>
                         )}
-                      </td>
-                      <td className="py-4 font-medium text-viaja-green">
-                        R$ {driver.earnings.toFixed(2)}
                       </td>
                       <td className="py-4">
                         <DropdownMenu>
@@ -287,24 +232,24 @@ const DriverManagement = () => {
                             </DropdownMenuItem>
                             {driver.documentsStatus === 'Pendente' && (
                               <>
-                                <DropdownMenuItem onClick={() => handleDocumentApproval(driver.id, true)}>
+                                <DropdownMenuItem onClick={() => approveDocuments(driver.id, true)}>
                                   <CheckCircle className="h-4 w-4 mr-2" />
                                   Aprovar Documentos
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleDocumentApproval(driver.id, false)}>
+                                <DropdownMenuItem onClick={() => approveDocuments(driver.id, false, 'Documentos rejeitados pelo administrador')}>
                                   <Ban className="h-4 w-4 mr-2" />
                                   Rejeitar Documentos
                                 </DropdownMenuItem>
                               </>
                             )}
                             {driver.status !== 'Ativo' && driver.documentsStatus === 'Aprovado' && (
-                              <DropdownMenuItem onClick={() => handleStatusChange(driver.id, 'Ativo')}>
+                              <DropdownMenuItem onClick={() => updateDriverStatus(driver.id, 'Ativo')}>
                                 <CheckCircle className="h-4 w-4 mr-2" />
                                 Ativar
                               </DropdownMenuItem>
                             )}
                             {driver.status !== 'Suspenso' && (
-                              <DropdownMenuItem onClick={() => handleStatusChange(driver.id, 'Suspenso')}>
+                              <DropdownMenuItem onClick={() => updateDriverStatus(driver.id, 'Suspenso')}>
                                 <Ban className="h-4 w-4 mr-2" />
                                 Suspender
                               </DropdownMenuItem>

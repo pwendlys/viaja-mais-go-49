@@ -8,64 +8,18 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import AdminHeader from '@/components/admin/AdminHeader';
-import { toast } from 'sonner';
+import { usePatientsData } from '@/hooks/usePatientsData';
 
 const UserManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const { patients, isLoading, updatePatientStatus } = usePatientsData();
 
   const adminData = {
     name: 'Ana Administradora',
     email: 'admin@viajamais.com',
     role: 'Super Admin'
   };
-
-  const [users, setUsers] = useState([
-    {
-      id: 1,
-      name: 'Maria Silva',
-      email: 'maria.silva@email.com',
-      phone: '+55 11 99999-1111',
-      status: 'Ativo',
-      totalRides: 45,
-      rating: 4.8,
-      joinDate: '2023-08-15',
-      lastActivity: '2024-01-15'
-    },
-    {
-      id: 2,
-      name: 'Carlos Oliveira',
-      email: 'carlos.oliveira@email.com',
-      phone: '+55 11 99999-2222',
-      status: 'Ativo',
-      totalRides: 23,
-      rating: 4.5,
-      joinDate: '2023-12-03',
-      lastActivity: '2024-01-14'
-    },
-    {
-      id: 3,
-      name: 'Ana Costa',
-      email: 'ana.costa@email.com',
-      phone: '+55 11 99999-3333',
-      status: 'Suspenso',
-      totalRides: 12,
-      rating: 3.2,
-      joinDate: '2023-10-22',
-      lastActivity: '2024-01-10'
-    },
-    {
-      id: 4,
-      name: 'Pedro Santos',
-      email: 'pedro.santos@email.com',
-      phone: '+55 11 99999-4444',
-      status: 'Inativo',
-      totalRides: 67,
-      rating: 4.9,
-      joinDate: '2023-05-18',
-      lastActivity: '2023-12-20'
-    }
-  ]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -80,19 +34,25 @@ const UserManagement = () => {
     }
   };
 
-  const handleStatusChange = (userId: number, newStatus: string) => {
-    setUsers(users.map(user => 
-      user.id === userId ? { ...user, status: newStatus } : user
-    ));
-    toast.success(`Status do usuário alterado para ${newStatus}`);
-  };
-
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || user.status === statusFilter;
+  const filteredPatients = patients.filter(patient => {
+    const matchesSearch = patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         patient.phone.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || patient.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <AdminHeader admin={adminData} />
+        <div className="container mx-auto px-4 py-6 max-w-7xl">
+          <div className="flex justify-center items-center h-64">
+            <div className="text-lg">Carregando pacientes...</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -133,7 +93,7 @@ const UserManagement = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Total de Usuários</p>
-                  <p className="text-2xl font-bold text-viaja-blue">{users.length}</p>
+                  <p className="text-2xl font-bold text-viaja-blue">{patients.length}</p>
                 </div>
                 <Users className="h-8 w-8 text-viaja-blue" />
               </div>
@@ -146,7 +106,7 @@ const UserManagement = () => {
                 <div>
                   <p className="text-sm font-medium text-gray-600">Usuários Ativos</p>
                   <p className="text-2xl font-bold text-green-600">
-                    {users.filter(u => u.status === 'Ativo').length}
+                    {patients.filter(u => u.status === 'Ativo').length}
                   </p>
                 </div>
                 <CheckCircle className="h-8 w-8 text-green-600" />
@@ -160,7 +120,7 @@ const UserManagement = () => {
                 <div>
                   <p className="text-sm font-medium text-gray-600">Usuários Suspensos</p>
                   <p className="text-2xl font-bold text-red-600">
-                    {users.filter(u => u.status === 'Suspenso').length}
+                    {patients.filter(u => u.status === 'Suspenso').length}
                   </p>
                 </div>
                 <Ban className="h-8 w-8 text-red-600" />
@@ -174,7 +134,10 @@ const UserManagement = () => {
                 <div>
                   <p className="text-sm font-medium text-gray-600">Avaliação Média</p>
                   <p className="text-2xl font-bold text-yellow-600">
-                    {(users.reduce((sum, u) => sum + u.rating, 0) / users.length).toFixed(1)}
+                    {patients.filter(u => u.rating > 0).length > 0
+                      ? (patients.filter(u => u.rating > 0).reduce((sum, u) => sum + u.rating, 0) / patients.filter(u => u.rating > 0).length).toFixed(1)
+                      : '0.0'
+                    }
                   </p>
                 </div>
                 <div className="text-2xl">⭐</div>
@@ -198,38 +161,38 @@ const UserManagement = () => {
                     <th className="text-left py-3">Status</th>
                     <th className="text-left py-3">Corridas</th>
                     <th className="text-left py-3">Avaliação</th>
-                    <th className="text-left py-3">Membro Desde</th>
-                    <th className="text-left py-3">Última Atividade</th>
+                    <th className="text-left py-3">Endereço</th>
                     <th className="text-left py-3">Ações</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredUsers.map((user) => (
-                    <tr key={user.id} className="border-b hover:bg-gray-50">
+                  {filteredPatients.map((patient) => (
+                    <tr key={patient.id} className="border-b hover:bg-gray-50">
                       <td className="py-4">
                         <div>
-                          <div className="font-medium">{user.name}</div>
-                          <div className="text-gray-500 text-sm">{user.email}</div>
+                          <div className="font-medium">{patient.name}</div>
+                          <div className="text-gray-500 text-sm">SUS: {patient.susNumber || 'N/A'}</div>
                         </div>
                       </td>
-                      <td className="py-4 text-sm">{user.phone}</td>
+                      <td className="py-4 text-sm">{patient.phone}</td>
                       <td className="py-4">
-                        <Badge className={getStatusColor(user.status)}>
-                          {user.status}
+                        <Badge className={getStatusColor(patient.status)}>
+                          {patient.status}
                         </Badge>
                       </td>
-                      <td className="py-4">{user.totalRides}</td>
+                      <td className="py-4">{patient.totalRides}</td>
                       <td className="py-4">
-                        <div className="flex items-center">
-                          <span className="text-yellow-400 mr-1">⭐</span>
-                          {user.rating}
-                        </div>
+                        {patient.rating > 0 ? (
+                          <div className="flex items-center">
+                            <span className="text-yellow-400 mr-1">⭐</span>
+                            {patient.rating.toFixed(1)}
+                          </div>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
                       </td>
-                      <td className="py-4 text-sm">
-                        {new Date(user.joinDate).toLocaleDateString('pt-BR')}
-                      </td>
-                      <td className="py-4 text-sm">
-                        {new Date(user.lastActivity).toLocaleDateString('pt-BR')}
+                      <td className="py-4 text-sm max-w-xs truncate">
+                        {patient.address || 'N/A'}
                       </td>
                       <td className="py-4">
                         <DropdownMenu>
@@ -239,14 +202,14 @@ const UserManagement = () => {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            {user.status !== 'Ativo' && (
-                              <DropdownMenuItem onClick={() => handleStatusChange(user.id, 'Ativo')}>
+                            {patient.status !== 'Ativo' && (
+                              <DropdownMenuItem onClick={() => updatePatientStatus(patient.id, 'Ativo')}>
                                 <CheckCircle className="h-4 w-4 mr-2" />
                                 Ativar
                               </DropdownMenuItem>
                             )}
-                            {user.status !== 'Suspenso' && (
-                              <DropdownMenuItem onClick={() => handleStatusChange(user.id, 'Suspenso')}>
+                            {patient.status !== 'Suspenso' && (
+                              <DropdownMenuItem onClick={() => updatePatientStatus(patient.id, 'Suspenso')}>
                                 <Ban className="h-4 w-4 mr-2" />
                                 Suspender
                               </DropdownMenuItem>

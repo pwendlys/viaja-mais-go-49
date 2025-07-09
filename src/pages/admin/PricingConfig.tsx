@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { DollarSign, Save, Plus, Edit, Trash2, Car, Clock, MapPin } from 'lucide-react';
+
+import React, { useState } from 'react';
+import { DollarSign, Save, Plus, Edit, Car, Clock, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -8,23 +9,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import AdminHeader from '@/components/admin/AdminHeader';
-import { toast } from 'sonner';
-
-interface PricingConfig {
-  id: string;
-  vehicle_type: string;
-  price_per_km: number;
-  base_fare: number;
-  per_minute_rate: number;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-}
+import { usePricingData } from '@/hooks/usePricingData';
 
 const PricingConfig = () => {
-  const [pricingConfigs, setPricingConfigs] = useState<PricingConfig[]>([]);
+  const { pricingConfigs, isLoading, addPricingConfig, updatePricingConfig, toggleConfigStatus } = usePricingData();
   const [isAddingConfig, setIsAddingConfig] = useState(false);
-  const [editingConfig, setEditingConfig] = useState<PricingConfig | null>(null);
+  const [editingConfig, setEditingConfig] = useState<any>(null);
   const [newConfig, setNewConfig] = useState({
     vehicle_type: '',
     price_per_km: 0,
@@ -39,93 +29,41 @@ const PricingConfig = () => {
     role: 'Administrador'
   };
 
-  // Mock data - in real app, this would come from Supabase
-  useEffect(() => {
-    const mockConfigs: PricingConfig[] = [
-      {
-        id: '1',
-        vehicle_type: 'economico',
-        price_per_km: 2.00,
-        base_fare: 4.00,
-        per_minute_rate: 0.25,
-        is_active: true,
-        created_at: '2024-01-01',
-        updated_at: '2024-01-01'
-      },
-      {
-        id: '2',
-        vehicle_type: 'conforto',
-        price_per_km: 2.50,
-        base_fare: 5.00,
-        per_minute_rate: 0.30,
-        is_active: true,
-        created_at: '2024-01-01',
-        updated_at: '2024-01-01'
-      },
-      {
-        id: '3',
-        vehicle_type: 'premium',
-        price_per_km: 3.50,
-        base_fare: 7.00,
-        per_minute_rate: 0.40,
-        is_active: true,
-        created_at: '2024-01-01',
-        updated_at: '2024-01-01'
-      }
-    ];
-    setPricingConfigs(mockConfigs);
-  }, []);
-
-  const handleAddConfig = () => {
+  const handleAddConfig = async () => {
     if (newConfig.vehicle_type && newConfig.price_per_km > 0) {
-      const config: PricingConfig = {
-        id: Date.now().toString(),
+      const success = await addPricingConfig({
         ...newConfig,
-        is_active: true,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-      
-      setPricingConfigs([...pricingConfigs, config]);
-      setNewConfig({
-        vehicle_type: '',
-        price_per_km: 0,
-        base_fare: 0,
-        per_minute_rate: 0
+        is_active: true
       });
-      setIsAddingConfig(false);
-      toast.success('Configuração de preço adicionada com sucesso!');
-    } else {
-      toast.error('Por favor, preencha todos os campos obrigatórios');
+      
+      if (success) {
+        setNewConfig({
+          vehicle_type: '',
+          price_per_km: 0,
+          base_fare: 0,
+          per_minute_rate: 0
+        });
+        setIsAddingConfig(false);
+      }
     }
   };
 
-  const handleEditConfig = (config: PricingConfig) => {
+  const handleEditConfig = (config: any) => {
     setEditingConfig(config);
   };
 
-  const handleUpdateConfig = () => {
+  const handleUpdateConfig = async () => {
     if (editingConfig) {
-      setPricingConfigs(pricingConfigs.map(config => 
-        config.id === editingConfig.id 
-          ? { ...editingConfig, updated_at: new Date().toISOString() }
-          : config
-      ));
+      await updatePricingConfig(editingConfig.id, {
+        price_per_km: editingConfig.price_per_km,
+        base_fare: editingConfig.base_fare,
+        per_minute_rate: editingConfig.per_minute_rate
+      });
       setEditingConfig(null);
-      toast.success('Configuração atualizada com sucesso!');
     }
   };
 
-  const handleToggleActive = (id: string) => {
-    setPricingConfigs(pricingConfigs.map(config => 
-      config.id === id 
-        ? { ...config, is_active: !config.is_active, updated_at: new Date().toISOString() }
-        : config
-    ));
-    toast.success('Status da configuração atualizado!');
-  };
-
-  const calculateSamplePrice = (config: PricingConfig, distance: number = 5, duration: number = 15) => {
+  const calculateSamplePrice = (config: any, distance: number = 5, duration: number = 15) => {
     return (config.base_fare + (config.price_per_km * distance) + (config.per_minute_rate * duration)).toFixed(2);
   };
 
@@ -133,10 +71,24 @@ const PricingConfig = () => {
     const labels = {
       'economico': 'Econômico',
       'conforto': 'Conforto',
-      'premium': 'Premium'
+      'premium': 'Premium',
+      'standard': 'Padrão'
     };
     return labels[type as keyof typeof labels] || type;
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <AdminHeader admin={mockAdmin} />
+        <div className="container mx-auto px-4 py-6 max-w-6xl">
+          <div className="flex justify-center items-center h-64">
+            <div className="text-lg">Carregando configurações...</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -299,7 +251,7 @@ const PricingConfig = () => {
                       variant={config.is_active ? "outline" : "default"}
                       size="sm"
                       className="flex-1"
-                      onClick={() => handleToggleActive(config.id)}
+                      onClick={() => toggleConfigStatus(config.id)}
                     >
                       {config.is_active ? "Desativar" : "Ativar"}
                     </Button>
