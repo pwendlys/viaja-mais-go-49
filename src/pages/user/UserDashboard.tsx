@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { MapPin, Clock, User, History, Settings, Calendar, Heart, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,7 +10,9 @@ import UserHeader from '@/components/user/UserHeader';
 import MapView from '@/components/MapView';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import TabbedRideRequest from '@/components/TabbedRideRequest';
-import { toast } from 'sonner';
+import { useApiErrorHandler } from '@/hooks/useApiErrorHandler';
+import { useLoadingState } from '@/hooks/useLoadingState';
+import { apiMiddleware } from '@/utils/apiMiddleware';
 
 interface Location {
   lat: number;
@@ -18,12 +20,19 @@ interface Location {
   address: string;
 }
 
+type RideState = 'idle' | 'searching' | 'driver-assigned' | 'driver-arriving' | 'in-transit' | 'completed';
+
 const UserDashboard = () => {
-  const [rideState, setRideState] = useState<'idle' | 'searching' | 'driver-assigned' | 'driver-arriving' | 'in-transit' | 'completed'>('idle');
+  const [rideState, setRideState] = useState<RideState>('idle');
   const [selectedDestination, setSelectedDestination] = useState<string>('');
   const [routeOrigin, setRouteOrigin] = useState<{lat: number, lng: number} | null>(null);
   const [routeDestination, setRouteDestination] = useState<{lat: number, lng: number} | null>(null);
-  const { userProfile, loading, error } = useUserProfile();
+  const [apiHealth, setApiHealth] = useState<boolean>(true);
+
+  // Hooks
+  const { userProfile, loading, error, refetch: refreshProfile } = useUserProfile();
+  const { handleError, handleSuccess } = useApiErrorHandler();
+  const { isLoading, withLoading } = useLoadingState(['requestRide', 'scheduleRide']);
 
   // Mock drivers for demonstration
   const mockDrivers = [
@@ -45,14 +54,41 @@ const UserDashboard = () => {
     }
   ];
 
-  const handleRequestRide = (vehicleType: string, pickup: string, destination: string) => {
-    setRideState('searching');
-    toast.success(`Solicitando ${vehicleType} de ${pickup} para ${destination}`);
-    // In real app, this would connect to database
-    setTimeout(() => setRideState('idle'), 3000);
-  };
+  // API health monitoring
+  useEffect(() => {
+    const checkHealth = async () => {
+      const isHealthy = await apiMiddleware.healthCheck();
+      setApiHealth(isHealthy);
+    };
 
-  const handleScheduleRide = (data: {
+    checkHealth();
+    const interval = setInterval(checkHealth, 60000); // Check every minute
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleRequestRide = useCallback(async (vehicleType: string, pickup: string, destination: string) => {
+    try {
+      await withLoading('requestRide', async () => {
+        setRideState('searching');
+        
+        // Simulate API call
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        handleSuccess(`Solicitando ${vehicleType} de ${pickup} para ${destination}`);
+        
+        // Reset after demo
+        setTimeout(() => {
+          setRideState('idle');
+        }, 3000);
+      });
+    } catch (error) {
+      handleError(error, 'solicitação de corrida');
+      setRideState('idle');
+    }
+  }, [withLoading, handleSuccess, handleError]);
+
+  const handleScheduleRide = useCallback(async (data: {
     vehicleType: string;
     pickup: string;
     destination: string;
@@ -60,49 +96,84 @@ const UserDashboard = () => {
     appointmentTime: string;
     notes?: string;
   }) => {
-    toast.success(`Transporte agendado para ${data.appointmentDate.toLocaleDateString('pt-BR')} às ${data.appointmentTime}`);
-    console.log('Agendamento:', data);
-    // In real app, this would save to database
-  };
+    try {
+      await withLoading('scheduleRide', async () => {
+        // Simulate API call
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        console.log('Agendamento:', data);
+        handleSuccess(`Transporte agendado para ${data.appointmentDate.toLocaleDateString('pt-BR')} às ${data.appointmentTime}`);
+      });
+    } catch (error) {
+      handleError(error, 'agendamento de transporte');
+    }
+  }, [withLoading, handleSuccess, handleError]);
 
-  const handleCancelRide = () => {
+  const handleCancelRide = useCallback(() => {
     setRideState('idle');
-  };
+    handleSuccess('Corrida cancelada');
+  }, [handleSuccess]);
 
-  const handleRateRide = (rating: number) => {
+  const handleRateRide = useCallback((rating: number) => {
     setRideState('idle');
-  };
+    handleSuccess(`Avaliação enviada: ${rating} estrelas`);
+  }, [handleSuccess]);
 
-  const handleRouteChange = (origin: Location | null, destination: Location | null) => {
+  const handleRouteChange = useCallback((origin: Location | null, destination: Location | null) => {
     setRouteOrigin(origin);
     setRouteDestination(destination);
-  };
+  }, []);
 
+  // Loading state
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="flex items-center space-x-2">
-          <Loader2 className="h-6 w-6 animate-spin" />
+          <Loader2 className="h-6 w-6 animate-spin text-viaja-blue" />
           <span>Carregando dados do usuário...</span>
         </div>
       </div>
     );
   }
 
+  // Error state with retry option
   if (error || !userProfile) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-600 mb-4">{error || 'Erro ao carregar dados'}</p>
-          <Button onClick={() => window.location.reload()}>
-            Tentar Novamente
-          </Button>
+        <div className="text-center max-w-md mx-auto p-6">
+          <div className="text-red-600 mb-4">
+            <p className="font-semibold">Erro ao carregar dados</p>
+            <p className="text-sm">{error || 'Dados do usuário não encontrados'}</p>
+          </div>
+          <div className="space-y-2">
+            <Button 
+              onClick={refreshProfile}
+              disabled={loading}
+              className="w-full"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Carregando...
+                </>
+              ) : (
+                'Tentar Novamente'
+              )}
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => window.location.reload()}
+              className="w-full"
+            >
+              Recarregar Página
+            </Button>
+          </div>
         </div>
       </div>
     );
   }
 
-  // Preparar dados do usuário para o header
+  // Prepare user data for header
   const userData = {
     name: userProfile.profile.full_name,
     email: '', // Email não está sendo retornado da API
@@ -114,6 +185,22 @@ const UserDashboard = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <UserHeader user={userData} />
+      
+      {/* API Health Warning */}
+      {!apiHealth && (
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <AlertTriangle className="h-5 w-5 text-yellow-400" />
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-yellow-700">
+                Problemas de conectividade detectados. Algumas funcionalidades podem estar limitadas.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
       
       <div className="container mx-auto px-4 py-6 max-w-6xl">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -155,6 +242,7 @@ const UserDashboard = () => {
               </CardContent>
             </Card>
 
+            {/* Ride Request/Status Section */}
             <div id="ride-request-section" className="flex justify-center">
               {rideState === 'idle' ? (
                 <TabbedRideRequest 
@@ -234,7 +322,14 @@ const UserDashboard = () => {
                     Configurações Pessoais
                   </Button>
                 </Link>
-                <Button variant="outline" className="w-full justify-start">
+                <Button 
+                  variant="outline" 
+                  className="w-full justify-start"
+                  onClick={() => {
+                    const scheduleSection = document.getElementById('ride-request-section');
+                    scheduleSection?.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                >
                   <Calendar className="h-4 w-4 mr-2" />
                   Agendar Transporte
                 </Button>

@@ -1,21 +1,21 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { MapPin, Search, X, Navigation, Heart } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { MapPin, Loader2, Navigation } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { useMapboxApi } from '@/hooks/useMapboxApi';
 import { toast } from 'sonner';
-import FavoriteLocationModal from './FavoriteLocationModal';
 
-interface AddressSuggestion {
-  id: string;
-  place_name: string;
-  center: [number, number];
+interface Location {
+  lat: number;
+  lng: number;
+  address: string;
 }
 
 interface LocationAwareAutocompleteProps {
   value: string;
   onChange: (value: string) => void;
-  onLocationSelect: (location: { lat: number; lng: number; address: string }) => void;
+  onLocationSelect?: (location: Location) => void;
   placeholder?: string;
   className?: string;
   showCurrentLocation?: boolean;
@@ -31,387 +31,233 @@ const LocationAwareAutocomplete = ({
   showCurrentLocation = false,
   isDestination = false
 }: LocationAwareAutocompleteProps) => {
-  const [suggestions, setSuggestions] = useState<AddressSuggestion[]>([]);
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [selectedIndex, setSelectedIndex] = useState(-1);
-  const [gettingLocation, setGettingLocation] = useState(false);
-  const [favorites, setFavorites] = useState<any[]>([]);
-  const [showFavoriteModal, setShowFavoriteModal] = useState(false);
-  const [selectedLocation, setSelectedLocation] = useState<{ lat: number; lng: number; address: string } | null>(null);
   
-  const inputRef = useRef<HTMLInputElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+  // Use refs to prevent infinite re-renders
   const timeoutRef = useRef<NodeJS.Timeout>();
-  const abortControllerRef = useRef<AbortController | null>(null);
+  const lastQueryRef = useRef<string>('');
   
   const { searchPlaces, reverseGeocode } = useMapboxApi();
 
-  // Load favorites from localStorage
-  useEffect(() => {
-    try {
-      const savedFavorites = JSON.parse(localStorage.getItem('favoriteLocations') || '[]');
-      setFavorites(savedFavorites);
-    } catch (error) {
-      console.error('Erro ao carregar favoritos:', error);
-      setFavorites([]);
-    }
-  }, []);
-
-  // Close suggestions when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setShowSuggestions(false);
-        setSelectedIndex(-1);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
-  }, []);
-
-  // Search suggestions with debounce
-  useEffect(() => {
-    // Cancel previous request
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    
+  // Memoized function to search places
+  const searchWithDebounce = useCallback(async (query: string) => {
+    // Clear previous timeout
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
 
-    if (value.length < 3) {
-      // Show favorites when input is empty and it's destination field
-      if (isDestination && value.length === 0 && favorites.length > 0) {
-        const favoriteSuggestions = favorites.map((fav, index) => ({
-          id: `favorite-${index}`,
-          place_name: `${fav.name} - ${fav.address}`,
-          center: [fav.lng, fav.lat] as [number, number],
-          isFavorite: true
-        }));
-        setSuggestions(favoriteSuggestions);
-        setShowSuggestions(true);
-      } else {
-        setSuggestions([]);
-        setShowSuggestions(false);
-      }
-      setIsLoading(false);
+    // Don't search for empty or very short queries
+    if (!query || query.length < 3 || query === lastQueryRef.current) {
+      setSuggestions([]);
+      setShowSuggestions(false);
       return;
     }
 
-    setIsLoading(true);
-    
+    lastQueryRef.current = query;
+
     timeoutRef.current = setTimeout(async () => {
       try {
-        // Create new abort controller for this request
-        abortControllerRef.current = new AbortController();
+        setIsLoadingSuggestions(true);
+        const results = await searchPlaces(query);
         
-        const response = await searchPlaces(value, { lat: -21.7554, lng: -43.3636 });
-        
-        // Check if request was aborted
-        if (abortControllerRef.current.signal.aborted) {
-          return;
-        }
-        
-        if (response?.features && Array.isArray(response.features)) {
-          const uniqueSuggestions = response.features.reduce((acc: AddressSuggestion[], feature: any) => {
-            if (feature?.place_name && feature?.center && Array.isArray(feature.center) && feature.center.length >= 2) {
-              const exists = acc.find(item => item.place_name === feature.place_name);
-              if (!exists) {
-                acc.push({
-                  id: feature.id || `suggestion-${acc.length}`,
-                  place_name: feature.place_name,
-                  center: [feature.center[0], feature.center[1]]
-                });
-              }
-            }
-            return acc;
-          }, []);
-          
-          setSuggestions(uniqueSuggestions.slice(0, 5));
-          setShowSuggestions(uniqueSuggestions.length > 0);
+        if (Array.isArray(results)) {
+          setSuggestions(results.slice(0, 5)); // Limit to 5 suggestions
+          setShowSuggestions(true);
         } else {
           setSuggestions([]);
           setShowSuggestions(false);
         }
       } catch (error) {
-        // Only show error if request wasn't aborted
-        if (!abortControllerRef.current?.signal.aborted) {
-          console.error('Erro ao buscar endereços:', error);
-          setSuggestions([]);
-          setShowSuggestions(false);
-          toast.error('Erro ao buscar endereços. Tente novamente.');
-        }
+        console.error('Error searching places:', error);
+        setSuggestions([]);
+        setShowSuggestions(false);
+        toast.error('Erro ao buscar endereços');
       } finally {
-        setIsLoading(false);
+        setIsLoadingSuggestions(false);
       }
-    }, 500);
+    }, 500); // 500ms debounce
+  }, [searchPlaces]);
 
+  // Handle input change with debounced search
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    onChange(newValue);
+    
+    if (newValue.length >= 3) {
+      searchWithDebounce(newValue);
+    } else {
+      setSuggestions([]);
+      setShowSuggestions(false);
+    }
+  }, [onChange, searchWithDebounce]);
+
+  // Handle suggestion selection
+  const handleSuggestionSelect = useCallback((suggestion: any) => {
+    if (suggestion && suggestion.place_name) {
+      onChange(suggestion.place_name);
+      
+      if (onLocationSelect && suggestion.center) {
+        const location: Location = {
+          lat: suggestion.center[1],
+          lng: suggestion.center[0],
+          address: suggestion.place_name
+        };
+        onLocationSelect(location);
+      }
+      
+      setSuggestions([]);
+      setShowSuggestions(false);
+      lastQueryRef.current = suggestion.place_name;
+    }
+  }, [onChange, onLocationSelect]);
+
+  // Get current location
+  const getCurrentLocation = useCallback(async () => {
+    if (!navigator.geolocation) {
+      toast.error('Geolocalização não suportada pelo navegador');
+      return;
+    }
+
+    setIsGettingLocation(true);
+
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(
+          resolve,
+          reject,
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 300000 // 5 minutes
+          }
+        );
+      });
+
+      const { latitude, longitude } = position.coords;
+      
+      try {
+        const address = await reverseGeocode(latitude, longitude);
+        
+        if (address) {
+          onChange(address);
+          
+          if (onLocationSelect) {
+            const location: Location = {
+              lat: latitude,
+              lng: longitude,
+              address: address
+            };
+            onLocationSelect(location);
+          }
+          
+          toast.success('Localização atual obtida com sucesso');
+        }
+      } catch (geocodeError) {
+        console.error('Reverse geocoding error:', geocodeError);
+        toast.error('Erro ao obter endereço da localização');
+      }
+    } catch (error: any) {
+      console.error('Geolocation error:', error);
+      
+      let errorMessage = 'Erro ao obter localização';
+      if (error.code === 1) {
+        errorMessage = 'Permissão de localização negada';
+      } else if (error.code === 2) {
+        errorMessage = 'Localização indisponível';
+      } else if (error.code === 3) {
+        errorMessage = 'Timeout ao obter localização';
+      }
+      
+      toast.error(errorMessage);
+    } finally {
+      setIsGettingLocation(false);
+    }
+  }, [onChange, onLocationSelect, reverseGeocode]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
     return () => {
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [value, searchPlaces, favorites, isDestination]);
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = e.target.value;
-    onChange(newValue);
-    setSelectedIndex(-1);
-  };
-
-  const handleSuggestionClick = (suggestion: AddressSuggestion) => {
-    const location = {
-      lat: suggestion.center[1],
-      lng: suggestion.center[0],
-      address: suggestion.place_name
-    };
-
-    onChange(suggestion.place_name);
-    onLocationSelect(location);
-    setShowSuggestions(false);
-    setSelectedIndex(-1);
-    setSuggestions([]);
-
-    // If it's destination and not a favorite, show option to save as favorite
-    if (isDestination && !(suggestion as any).isFavorite) {
-      setSelectedLocation(location);
-      setShowFavoriteModal(true);
-    }
-  };
-
-  const handleGetCurrentLocation = () => {
-    if (!navigator.geolocation) {
-      toast.error('Geolocalização não é suportada neste navegador');
-      return;
-    }
-
-    if (gettingLocation) {
-      return; // Prevent multiple concurrent requests
-    }
-
-    setGettingLocation(true);
-
-    const options = {
-      enableHighAccuracy: true,
-      timeout: 15000, // Increased timeout
-      maximumAge: 60000 // Cache for 1 minute
-    };
-
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        try {
-          console.log('Posição obtida:', position.coords);
-          const { latitude, longitude } = position.coords;
-          
-          // Try reverse geocoding first
-          try {
-            const response = await reverseGeocode(latitude, longitude);
-            
-            if (response?.features && response.features[0]) {
-              const address = response.features[0].place_name;
-              console.log('Endereço obtido:', address);
-              onChange(address);
-              onLocationSelect({
-                lat: latitude,
-                lng: longitude,
-                address: address
-              });
-              toast.success('Localização atual obtida com sucesso!');
-            } else {
-              throw new Error('Nenhum endereço encontrado');
-            }
-          } catch (geocodeError) {
-            console.warn('Erro no reverse geocoding, usando coordenadas:', geocodeError);
-            // Fallback to coordinates if reverse geocoding fails
-            const coordsAddress = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
-            onChange(coordsAddress);
-            onLocationSelect({
-              lat: latitude,
-              lng: longitude,
-              address: coordsAddress
-            });
-            toast.success('Localização atual obtida!');
-          }
-        } catch (error) {
-          console.error('Erro ao processar localização:', error);
-          toast.error('Erro ao processar sua localização');
-        } finally {
-          setGettingLocation(false);
-        }
-      },
-      (error) => {
-        console.error('Erro de geolocalização:', error);
-        let errorMessage = 'Erro ao obter localização atual';
-        
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            errorMessage = 'Permissão de localização negada. Permita o acesso à localização nas configurações do navegador.';
-            break;
-          case error.POSITION_UNAVAILABLE:
-            errorMessage = 'Localização não disponível. Verifique se o GPS está ativado.';
-            break;
-          case error.TIMEOUT:
-            errorMessage = 'Tempo limite para obter localização. Tente novamente.';
-            break;
-          default:
-            errorMessage = 'Erro desconhecido ao obter localização.';
-        }
-        
-        toast.error(errorMessage);
-        setGettingLocation(false);
-      },
-      options
-    );
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (!showSuggestions || suggestions.length === 0) return;
-
-    switch (e.key) {
-      case 'ArrowDown':
-        e.preventDefault();
-        setSelectedIndex(prev => 
-          prev < suggestions.length - 1 ? prev + 1 : prev
-        );
-        break;
-      case 'ArrowUp':
-        e.preventDefault();
-        setSelectedIndex(prev => prev > 0 ? prev - 1 : -1);
-        break;
-      case 'Enter':
-        e.preventDefault();
-        if (selectedIndex >= 0 && selectedIndex < suggestions.length) {
-          handleSuggestionClick(suggestions[selectedIndex]);
-        }
-        break;
-      case 'Escape':
-        setShowSuggestions(false);
-        setSelectedIndex(-1);
-        inputRef.current?.blur();
-        break;
-    }
-  };
-
-  const clearInput = () => {
-    onChange('');
-    setSuggestions([]);
-    setShowSuggestions(false);
-    setSelectedIndex(-1);
-    inputRef.current?.focus();
-  };
+  }, []);
 
   return (
-    <>
-      <div ref={containerRef} className={`relative ${className}`}>
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+    <div className={`relative ${className}`}>
+      <div className="flex space-x-2">
+        <div className="relative flex-1">
           <Input
-            ref={inputRef}
             type="text"
             value={value}
             onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
-            onFocus={() => {
-              if (isDestination && value.length === 0 && favorites.length > 0) {
-                const favoriteSuggestions = favorites.map((fav, index) => ({
-                  id: `favorite-${index}`,
-                  place_name: `${fav.name} - ${fav.address}`,
-                  center: [fav.lng, fav.lat] as [number, number],
-                  isFavorite: true
-                }));
-                setSuggestions(favoriteSuggestions);
-                setShowSuggestions(true);
-              }
-            }}
             placeholder={placeholder}
-            className="pl-10 pr-20"
+            className="pr-10"
             autoComplete="off"
-            disabled={gettingLocation}
           />
           
-          <div className="absolute right-1 top-1/2 transform -translate-y-1/2 flex items-center space-x-1">
-            {showCurrentLocation && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0"
-                onClick={handleGetCurrentLocation}
-                disabled={gettingLocation}
-                title="Usar localização atual"
-              >
-                <Navigation className={`h-4 w-4 ${gettingLocation ? 'animate-spin text-blue-600' : ''}`} />
-              </Button>
-            )}
-            
-            {value && !gettingLocation && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0"
-                onClick={clearInput}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
-
-          {(isLoading || gettingLocation) && (
-            <div className="absolute right-12 top-1/2 transform -translate-y-1/2">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+          {isLoadingSuggestions && (
+            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+              <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+            </div>
+          )}
+          
+          {!isLoadingSuggestions && value && (
+            <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+              <MapPin className="h-4 w-4 text-gray-400" />
             </div>
           )}
         </div>
-
-        {showSuggestions && suggestions.length > 0 && (
-          <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-            {suggestions.map((suggestion, index) => (
-              <button
-                key={suggestion.id}
-                type="button"
-                className={`w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center space-x-3 border-b border-gray-100 last:border-b-0 ${
-                  index === selectedIndex ? 'bg-blue-50 border-blue-200' : ''
-                }`}
-                onClick={() => handleSuggestionClick(suggestion)}
-              >
-                {(suggestion as any).isFavorite ? (
-                  <Heart className="h-4 w-4 text-viaja-blue flex-shrink-0" />
-                ) : (
-                  <MapPin className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                )}
-                <span className="text-sm text-gray-800 truncate">
-                  {suggestion.place_name}
-                </span>
-              </button>
-            ))}
-          </div>
+        
+        {showCurrentLocation && !isDestination && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={getCurrentLocation}
+            disabled={isGettingLocation}
+            className="px-3"
+          >
+            {isGettingLocation ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Navigation className="h-4 w-4" />
+            )}
+          </Button>
         )}
       </div>
 
-      <FavoriteLocationModal
-        isOpen={showFavoriteModal}
-        onClose={() => setShowFavoriteModal(false)}
-        location={selectedLocation}
-      />
-    </>
+      {/* Suggestions dropdown */}
+      {showSuggestions && suggestions.length > 0 && (
+        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
+          {suggestions.map((suggestion, index) => (
+            <button
+              key={`${suggestion.id || index}`}
+              type="button"
+              className="w-full px-4 py-3 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none border-b border-gray-100 last:border-b-0"
+              onClick={() => handleSuggestionSelect(suggestion)}
+            >
+              <div className="flex items-start space-x-3">
+                <MapPin className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-gray-900 truncate">
+                    {suggestion.text || suggestion.place_name}
+                  </p>
+                  {suggestion.place_name !== suggestion.text && (
+                    <p className="text-xs text-gray-500 truncate">
+                      {suggestion.place_name}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 };
 

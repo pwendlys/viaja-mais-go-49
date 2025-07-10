@@ -13,7 +13,9 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import LocationAwareAutocomplete from '@/components/maps/LocationAwareAutocomplete';
-import { toast } from 'sonner';
+import { useFormValidation, commonRules } from '@/hooks/useFormValidation';
+import { useLoadingState } from '@/hooks/useLoadingState';
+import { useApiErrorHandler } from '@/hooks/useApiErrorHandler';
 
 interface Location {
   lat: number;
@@ -42,6 +44,18 @@ const ScheduleRideForm = ({ onScheduleRide, onRouteChange }: ScheduleRideFormPro
   const [notes, setNotes] = useState('');
   const [pickupLocation, setPickupLocation] = useState<Location | null>(null);
   const [destinationLocation, setDestinationLocation] = useState<Location | null>(null);
+
+  // Error handling and loading states
+  const { handleError, handleSuccess } = useApiErrorHandler();
+  const { isLoading, withLoading } = useLoadingState(['scheduleRide']);
+
+  // Form validation
+  const { errors, validate, clearErrors } = useFormValidation({
+    pickup: { required: true, minLength: 10 },
+    destination: { required: true, minLength: 10 },
+    appointmentDate: { required: true },
+    appointmentTime: { required: true }
+  });
 
   const vehicleOptions = [
     {
@@ -81,38 +95,72 @@ const ScheduleRideForm = ({ onScheduleRide, onRouteChange }: ScheduleRideFormPro
     }
   };
 
-  const handleScheduleRide = () => {
-    if (!pickup.trim()) {
-      toast.error('Por favor, informe o local de origem');
-      return;
-    }
-    
-    if (!destination.trim()) {
-      toast.error('Por favor, informe o destino');
-      return;
-    }
+  const handleScheduleRide = async () => {
+    try {
+      // Clear previous errors
+      clearErrors();
 
-    if (!appointmentDate) {
-      toast.error('Por favor, selecione a data da consulta');
-      return;
-    }
+      // Validate form data
+      const formData = {
+        pickup: pickup.trim(),
+        destination: destination.trim(),
+        appointmentDate,
+        appointmentTime
+      };
 
-    if (!appointmentTime) {
-      toast.error('Por favor, selecione o horário da consulta');
-      return;
-    }
+      if (!validate(formData)) {
+        handleError('Por favor, corrija os erros no formulário');
+        return;
+      }
 
-    onScheduleRide({
-      vehicleType: selectedVehicle,
-      pickup,
-      destination,
-      appointmentDate,
-      appointmentTime,
-      notes: notes.trim() || undefined
-    });
+      // Additional validations
+      if (!appointmentDate) {
+        handleError('Por favor, selecione a data da consulta');
+        return;
+      }
+
+      if (!appointmentTime) {
+        handleError('Por favor, selecione o horário da consulta');
+        return;
+      }
+
+      // Check if appointment is in the future
+      const appointmentDateTime = new Date(appointmentDate);
+      const [hours, minutes] = appointmentTime.split(':').map(Number);
+      appointmentDateTime.setHours(hours, minutes, 0, 0);
+
+      if (appointmentDateTime <= new Date()) {
+        handleError('O agendamento deve ser para uma data e horário futuros');
+        return;
+      }
+
+      // Schedule the ride
+      await withLoading('scheduleRide', async () => {
+        await onScheduleRide({
+          vehicleType: selectedVehicle,
+          pickup: pickup.trim(),
+          destination: destination.trim(),
+          appointmentDate,
+          appointmentTime,
+          notes: notes.trim() || undefined
+        });
+
+        handleSuccess('Transporte agendado com sucesso!');
+        
+        // Reset form
+        setPickup('');
+        setDestination('');
+        setAppointmentDate(undefined);
+        setAppointmentTime('');
+        setNotes('');
+        setSelectedVehicle('tradicional');
+        setPickupLocation(null);
+        setDestinationLocation(null);
+      });
+    } catch (error) {
+      handleError(error, 'agendamento de transporte');
+    }
   };
-
-  const canScheduleRide = pickup.trim() && destination.trim() && appointmentDate && appointmentTime;
 
   // Prevent selecting past dates
   const disablePastDates = (date: Date) => {
@@ -145,6 +193,9 @@ const ScheduleRideForm = ({ onScheduleRide, onRouteChange }: ScheduleRideFormPro
             className="w-full"
             showCurrentLocation={true}
           />
+          {errors.pickup && (
+            <p className="text-sm text-red-600">{errors.pickup}</p>
+          )}
         </div>
 
         {/* Destination Location */}
@@ -161,6 +212,9 @@ const ScheduleRideForm = ({ onScheduleRide, onRouteChange }: ScheduleRideFormPro
             className="w-full"
             isDestination={true}
           />
+          {errors.destination && (
+            <p className="text-sm text-red-600">{errors.destination}</p>
+          )}
         </div>
 
         {/* Date Selection */}
@@ -172,7 +226,8 @@ const ScheduleRideForm = ({ onScheduleRide, onRouteChange }: ScheduleRideFormPro
                 variant="outline"
                 className={cn(
                   "w-full justify-start text-left font-normal",
-                  !appointmentDate && "text-muted-foreground"
+                  !appointmentDate && "text-muted-foreground",
+                  errors.appointmentDate && "border-red-500"
                 )}
               >
                 <Calendar className="mr-2 h-4 w-4" />
@@ -190,13 +245,16 @@ const ScheduleRideForm = ({ onScheduleRide, onRouteChange }: ScheduleRideFormPro
               />
             </PopoverContent>
           </Popover>
+          {errors.appointmentDate && (
+            <p className="text-sm text-red-600">{errors.appointmentDate}</p>
+          )}
         </div>
 
         {/* Time Selection */}
         <div className="space-y-2">
           <Label className="text-sm font-medium text-gray-700">Horário da Consulta</Label>
           <Select value={appointmentTime} onValueChange={setAppointmentTime}>
-            <SelectTrigger>
+            <SelectTrigger className={errors.appointmentTime ? "border-red-500" : ""}>
               <Clock className="mr-2 h-4 w-4" />
               <SelectValue placeholder="Selecione o horário" />
             </SelectTrigger>
@@ -208,6 +266,9 @@ const ScheduleRideForm = ({ onScheduleRide, onRouteChange }: ScheduleRideFormPro
               ))}
             </SelectContent>
           </Select>
+          {errors.appointmentTime && (
+            <p className="text-sm text-red-600">{errors.appointmentTime}</p>
+          )}
         </div>
 
         {/* Vehicle Selection */}
@@ -219,6 +280,7 @@ const ScheduleRideForm = ({ onScheduleRide, onRouteChange }: ScheduleRideFormPro
             {vehicleOptions.map((vehicle) => (
               <button
                 key={vehicle.id}
+                type="button"
                 onClick={() => setSelectedVehicle(vehicle.id)}
                 className={`w-full p-3 rounded-lg border text-left transition-all ${
                   selectedVehicle === vehicle.id
@@ -255,7 +317,11 @@ const ScheduleRideForm = ({ onScheduleRide, onRouteChange }: ScheduleRideFormPro
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Informações adicionais sobre o transporte..."
             className="min-h-[80px]"
+            maxLength={500}
           />
+          <div className="text-xs text-gray-500 text-right">
+            {notes.length}/500 caracteres
+          </div>
         </div>
 
         {/* Service Notice */}
@@ -273,11 +339,11 @@ const ScheduleRideForm = ({ onScheduleRide, onRouteChange }: ScheduleRideFormPro
         {/* Schedule Button */}
         <Button
           onClick={handleScheduleRide}
-          disabled={!canScheduleRide}
+          disabled={isLoading('scheduleRide')}
           className="w-full gradient-viaja text-white"
         >
           <MapPin className="h-4 w-4 mr-2" />
-          Agendar Transporte
+          {isLoading('scheduleRide') ? 'Agendando...' : 'Agendar Transporte'}
         </Button>
       </CardContent>
     </Card>
