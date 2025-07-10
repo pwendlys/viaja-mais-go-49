@@ -1,175 +1,109 @@
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
+import { useRealtimeNotifications } from './useRealtimeNotifications';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-interface RideRequest {
-  id: string;
-  patientId: string;
-  patientName: string;
-  originAddress: string;
-  destinationAddress: string;
-  appointmentDate?: string;
-  distance?: number;
-  price?: number;
-  medicalNotes?: string;
+interface RideNotificationData {
+  rideId: string;
+  driverId?: string;
+  patientId?: string;
+  origin?: { lat: number; lng: number; address: string };
+  destination?: { lat: number; lng: number; address: string };
+  estimatedTime?: number;
+  fare?: number;
 }
 
-export const useRideNotifications = (driverId: string | null, isOnline: boolean) => {
-  const [pendingRequests, setPendingRequests] = useState<RideRequest[]>([]);
+export const useRideNotifications = (userId?: string, userType?: 'patient' | 'driver') => {
+  const channels = userType === 'driver' ? ['ride_requests'] : [];
+  const { notifications, isConnected, sendNotification } = useRealtimeNotifications(userId, channels);
 
   useEffect(() => {
-    if (!driverId || !isOnline) {
-      setPendingRequests([]);
-      return;
-    }
+    if (!userId) return;
 
-    // Escutar notificações em tempo real
-    const channel = supabase
-      .channel('ride-notifications')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${driverId}`
-        },
-        async (payload) => {
-          const notification = payload.new;
-          
-          if (notification.type === 'ride_request' && notification.ride_id) {
-            // Buscar detalhes da corrida
-            const { data: ride } = await supabase
-              .from('rides')
-              .select(`
-                id,
-                patient_id,
-                origin_address,
-                destination_address,
-                appointment_date,
-                distance_km,
-                price,
-                medical_notes,
-                profiles!rides_patient_id_fkey (full_name)
-              `)
-              .eq('id', notification.ride_id)
-              .eq('status', 'requested')
-              .single();
-
-            if (ride) {
-              const rideRequest: RideRequest = {
-                id: ride.id,
-                patientId: ride.patient_id,
-                patientName: (ride.profiles as any)?.full_name || 'Paciente',
-                originAddress: ride.origin_address,
-                destinationAddress: ride.destination_address,
-                appointmentDate: ride.appointment_date,
-                distance: ride.distance_km,
-                price: ride.price,
-                medicalNotes: ride.medical_notes
-              };
-
-              setPendingRequests(prev => [...prev, rideRequest]);
-              
-              // Mostrar notificação
-              toast.info(`Nova solicitação de corrida de ${rideRequest.patientName}`, {
-                description: `${rideRequest.originAddress} → ${rideRequest.destinationAddress}`,
-                duration: 10000,
-                action: {
-                  label: 'Ver',
-                  onClick: () => {
-                    // Aqui você pode abrir um modal com os detalhes
-                  }
-                }
-              });
-            }
-          }
-        }
-      )
+    // Escutar mudanças nas corridas do usuário
+    const ridesChannel = supabase
+      .channel('rides_changes')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'rides',
+        filter: userType === 'driver' ? `driver_id=eq.${userId}` : `patient_id=eq.${userId}`
+      }, (payload) => {
+        console.log('Ride change detected:', payload);
+        handleRideChange(payload);
+      })
       .subscribe();
 
-    // Buscar solicitações pendentes existentes
-    const fetchPendingRequests = async () => {
-      const { data: notifications } = await supabase
-        .from('notifications')
-        .select(`
-          ride_id,
-          rides!inner (
-            id,
-            patient_id,
-            origin_address,
-            destination_address,
-            appointment_date,
-            distance_km,
-            price,
-            medical_notes,
-            profiles!rides_patient_id_fkey (full_name)
-          )
-        `)
-        .eq('user_id', driverId)
-        .eq('type', 'ride_request')
-        .eq('is_read', false)
-        .eq('rides.status', 'requested');
-
-      if (notifications) {
-        const requests: RideRequest[] = notifications.map(notification => {
-          const ride = notification.rides as any;
-          return {
-            id: ride.id,
-            patientId: ride.patient_id,
-            patientName: ride.profiles?.full_name || 'Paciente',
-            originAddress: ride.origin_address,
-            destinationAddress: ride.destination_address,
-            appointmentDate: ride.appointment_date,
-            distance: ride.distance_km,
-            price: ride.price,
-            medicalNotes: ride.medical_notes
-          };
-        });
-
-        setPendingRequests(requests);
-      }
-    };
-
-    fetchPendingRequests();
-
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(ridesChannel);
     };
-  }, [driverId, isOnline]);
+  }, [userId, userType]);
 
-  const acceptRide = async (rideId: string) => {
-    if (!driverId) return;
+  const handleRideChange = (payload: any) => {
+    const { eventType, new: newRecord, old: oldRecord } = payload;
+    
+    if (eventType === 'UPDATE' && newRecord.status !== oldRecord.status) {
+      const statusMessages = {
+        'assigned': userType === 'patient' ? 'Motorista aceito! Ele está a caminho.' : 'Você aceitou a corrida!',
+        'in-progress': 'Corrida iniciada!',
+        'completed': 'Corrida concluída com sucesso!',
+        'cancelled': 'Corrida cancelada.'
+      };
 
-    try {
-      await supabase.functions.invoke('ride-management', {
-        body: {
-          action: 'accept_ride',
-          ride_id: rideId,
-          driver_id: driverId
-        }
-      });
-
-      // Remover da lista de pendentes
-      setPendingRequests(prev => prev.filter(req => req.id !== rideId));
-      
-      toast.success('Corrida aceita! O passageiro foi notificado.');
-    } catch (error) {
-      console.error('Erro ao aceitar corrida:', error);
-      toast.error('Erro ao aceitar corrida');
+      const message = statusMessages[newRecord.status];
+      if (message) {
+        toast(message, {
+          description: `Corrida #${newRecord.id.slice(0, 8)}`,
+          duration: 5000,
+        });
+      }
     }
   };
 
-  const rejectRide = async (rideId: string) => {
-    // Apenas remover da lista local - a corrida ficará disponível para outros motoristas
-    setPendingRequests(prev => prev.filter(req => req.id !== rideId));
-    toast.info('Corrida rejeitada');
+  // Funções específicas para diferentes tipos de notificação
+  const notifyRideRequest = async (rideData: RideNotificationData) => {
+    return sendNotification('ride_request', 
+      `Nova corrida disponível: ${rideData.origin?.address} → ${rideData.destination?.address}`,
+      rideData
+    );
+  };
+
+  const notifyRideAccepted = async (rideData: RideNotificationData) => {
+    return sendNotification('ride_accepted',
+      'Sua corrida foi aceita! O motorista está a caminho.',
+      rideData
+    );
+  };
+
+  const notifyDriverArriving = async (rideData: RideNotificationData) => {
+    return sendNotification('driver_arriving',
+      `O motorista chegará em aproximadamente ${rideData.estimatedTime} minutos.`,
+      rideData
+    );
+  };
+
+  const notifyRideStarted = async (rideData: RideNotificationData) => {
+    return sendNotification('ride_started',
+      'Sua corrida foi iniciada! Boa viagem.',
+      rideData
+    );
+  };
+
+  const notifyRideCompleted = async (rideData: RideNotificationData) => {
+    return sendNotification('ride_completed',
+      `Corrida concluída! Valor: R$ ${rideData.fare?.toFixed(2)}`,
+      rideData
+    );
   };
 
   return {
-    pendingRequests,
-    acceptRide,
-    rejectRide
+    notifications,
+    isConnected,
+    notifyRideRequest,
+    notifyRideAccepted,
+    notifyDriverArriving,
+    notifyRideStarted,
+    notifyRideCompleted
   };
 };

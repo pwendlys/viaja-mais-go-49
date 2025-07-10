@@ -53,6 +53,53 @@ export type Database = {
         }
         Relationships: []
       }
+      audit_log: {
+        Row: {
+          action: string
+          created_at: string | null
+          id: string
+          ip_address: unknown | null
+          new_values: Json | null
+          old_values: Json | null
+          record_id: string
+          table_name: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          id?: string
+          ip_address?: unknown | null
+          new_values?: Json | null
+          old_values?: Json | null
+          record_id: string
+          table_name: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          id?: string
+          ip_address?: unknown | null
+          new_values?: Json | null
+          old_values?: Json | null
+          record_id?: string
+          table_name?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_log_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       driver_payments: {
         Row: {
           amount: number
@@ -96,6 +143,13 @@ export type Database = {
             columns: ["driver_id"]
             isOneToOne: false
             referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "driver_payments_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "mv_driver_performance"
             referencedColumns: ["id"]
           },
         ]
@@ -149,6 +203,13 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "drivers_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_drivers_profiles"
             columns: ["id"]
             isOneToOne: true
             referencedRelation: "profiles"
@@ -225,6 +286,20 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_notifications_ride"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "rides"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_notifications_user"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "notifications_ride_id_fkey"
             columns: ["ride_id"]
             isOneToOne: false
@@ -281,6 +356,13 @@ export type Database = {
           sus_number?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "fk_patients_profiles"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "patients_id_fkey"
             columns: ["id"]
@@ -359,6 +441,62 @@ export type Database = {
         }
         Relationships: []
       }
+      realtime_notifications: {
+        Row: {
+          channel_name: string
+          created_at: string | null
+          delivered_at: string | null
+          error_message: string | null
+          failed_at: string | null
+          id: string
+          max_retries: number | null
+          message: Json
+          retry_count: number | null
+          scheduled_for: string | null
+          sent_at: string | null
+          status: string | null
+          user_id: string | null
+        }
+        Insert: {
+          channel_name: string
+          created_at?: string | null
+          delivered_at?: string | null
+          error_message?: string | null
+          failed_at?: string | null
+          id?: string
+          max_retries?: number | null
+          message: Json
+          retry_count?: number | null
+          scheduled_for?: string | null
+          sent_at?: string | null
+          status?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          channel_name?: string
+          created_at?: string | null
+          delivered_at?: string | null
+          error_message?: string | null
+          failed_at?: string | null
+          id?: string
+          max_retries?: number | null
+          message?: Json
+          retry_count?: number | null
+          scheduled_for?: string | null
+          sent_at?: string | null
+          status?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "realtime_notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ride_categories: {
         Row: {
           created_at: string
@@ -385,6 +523,41 @@ export type Database = {
           priority_level?: number
         }
         Relationships: []
+      }
+      ride_metrics: {
+        Row: {
+          id: string
+          metric_data: Json | null
+          metric_type: string
+          metric_value: number | null
+          recorded_at: string | null
+          ride_id: string | null
+        }
+        Insert: {
+          id?: string
+          metric_data?: Json | null
+          metric_type: string
+          metric_value?: number | null
+          recorded_at?: string | null
+          ride_id?: string | null
+        }
+        Update: {
+          id?: string
+          metric_data?: Json | null
+          metric_type?: string
+          metric_value?: number | null
+          recorded_at?: string | null
+          ride_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ride_metrics_ride_id_fkey"
+            columns: ["ride_id"]
+            isOneToOne: false
+            referencedRelation: "rides"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       rides: {
         Row: {
@@ -467,6 +640,34 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_rides_driver"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_rides_driver"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "mv_driver_performance"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_rides_facility"
+            columns: ["facility_id"]
+            isOneToOne: false
+            referencedRelation: "health_facilities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_rides_patient"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "rides_category_id_fkey"
             columns: ["category_id"]
             isOneToOne: false
@@ -478,6 +679,13 @@ export type Database = {
             columns: ["driver_id"]
             isOneToOne: false
             referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rides_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "mv_driver_performance"
             referencedColumns: ["id"]
           },
           {
@@ -545,10 +753,49 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      mv_driver_performance: {
+        Row: {
+          avg_distance: number | null
+          avg_rating: number | null
+          full_name: string | null
+          id: string | null
+          total_earnings: number | null
+          total_rides: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drivers_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_drivers_profiles"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mv_ride_statistics: {
+        Row: {
+          avg_distance: number | null
+          avg_duration: number | null
+          avg_price: number | null
+          date: string | null
+          status: string | null
+          total_rides: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
-      [_ in never]: never
+      calculate_distance: {
+        Args: { lat1: number; lng1: number; lat2: number; lng2: number }
+        Returns: number
+      }
     }
     Enums: {
       [_ in never]: never
