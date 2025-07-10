@@ -45,7 +45,7 @@ const RideHistoryStatsComponent: React.FC<RideHistoryStatsProps> = ({ stats }) =
     statItems.push({
       icon: Star,
       label: 'Avaliação Média',
-      value: stats.averageRating.toFixed(1),
+      value: Number(stats.averageRating.toFixed(1)),
       color: 'text-yellow-600',
       bgColor: 'bg-yellow-50'
     });
@@ -55,7 +55,7 @@ const RideHistoryStatsComponent: React.FC<RideHistoryStatsProps> = ({ stats }) =
     statItems.push({
       icon: Route,
       label: 'Distância Total',
-      value: `${stats.totalDistance.toFixed(1)} km`,
+      value: Number(stats.totalDistance.toFixed(1)),
       color: 'text-purple-600',
       bgColor: 'bg-purple-50'
     });
@@ -85,7 +85,7 @@ const RideHistoryStatsComponent: React.FC<RideHistoryStatsProps> = ({ stats }) =
                   <Icon className={`h-6 w-6 ${item.color}`} />
                 </div>
                 <p className={`text-2xl font-bold ${item.color} mb-1`}>
-                  {item.value}
+                  {typeof item.value === 'number' ? item.value : `${item.value} km`}
                 </p>
                 <p className="text-xs text-gray-600 font-medium">
                   {item.label}
