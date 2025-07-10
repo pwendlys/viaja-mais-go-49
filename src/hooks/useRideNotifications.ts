@@ -23,10 +23,16 @@ interface PendingRequest {
   price?: number;
   estimatedDistance?: number;
   createdAt: string;
+  originLat: number;
+  originLng: number;
+  destinationLat: number;
+  destinationLng: number;
+  medicalNotes?: string;
+  appointmentType?: string;
 }
 
-export const useRideNotifications = (userId?: string | null, isDriver: boolean = false) => {
-  const channels = isDriver ? ['ride_requests'] : [];
+export const useRideNotifications = (userId?: string | null, userType: 'patient' | 'driver' = 'patient') => {
+  const channels = userType === 'driver' ? ['ride_requests'] : [];
   const { notifications, isConnected, sendNotification } = useRealtimeNotifications(userId || undefined, channels);
   const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([]);
 
@@ -34,7 +40,7 @@ export const useRideNotifications = (userId?: string | null, isDriver: boolean =
     if (!userId) return;
 
     // Buscar solicitações pendentes se for motorista
-    if (isDriver) {
+    if (userType === 'driver') {
       fetchPendingRequests();
     }
 
@@ -45,7 +51,7 @@ export const useRideNotifications = (userId?: string | null, isDriver: boolean =
         event: '*',
         schema: 'public',
         table: 'rides',
-        filter: isDriver ? `driver_id=eq.${userId}` : `patient_id=eq.${userId}`
+        filter: userType === 'driver' ? `driver_id=eq.${userId}` : `patient_id=eq.${userId}`
       }, (payload) => {
         console.log('Ride change detected:', payload);
         handleRideChange(payload);
@@ -55,10 +61,10 @@ export const useRideNotifications = (userId?: string | null, isDriver: boolean =
     return () => {
       supabase.removeChannel(ridesChannel);
     };
-  }, [userId, isDriver]);
+  }, [userId, userType]);
 
   const fetchPendingRequests = async () => {
-    if (!userId || !isDriver) return;
+    if (!userId || userType !== 'driver') return;
 
     try {
       const { data: rides, error } = await supabase
@@ -67,10 +73,16 @@ export const useRideNotifications = (userId?: string | null, isDriver: boolean =
           id,
           origin_address,
           destination_address,
+          origin_lat,
+          origin_lng,
+          destination_lat,
+          destination_lng,
           price,
           distance_km,
           created_at,
           patient_id,
+          medical_notes,
+          appointment_type,
           profiles!rides_patient_id_fkey(full_name)
         `)
         .eq('status', 'requested')
@@ -80,13 +92,19 @@ export const useRideNotifications = (userId?: string | null, isDriver: boolean =
 
       const formattedRequests = rides?.map(ride => ({
         id: ride.id,
-        patientName: ride.profiles?.full_name || 'Paciente',
+        patientName: (ride.profiles as any)?.full_name || 'Paciente',
         patientId: ride.patient_id,
         originAddress: ride.origin_address,
         destinationAddress: ride.destination_address,
+        originLat: ride.origin_lat,
+        originLng: ride.origin_lng,
+        destinationLat: ride.destination_lat,
+        destinationLng: ride.destination_lng,
         price: ride.price,
         estimatedDistance: ride.distance_km,
-        createdAt: ride.created_at
+        createdAt: ride.created_at,
+        medicalNotes: ride.medical_notes,
+        appointmentType: ride.appointment_type
       })) || [];
 
       setPendingRequests(formattedRequests);
@@ -100,7 +118,7 @@ export const useRideNotifications = (userId?: string | null, isDriver: boolean =
     
     if (eventType === 'UPDATE' && newRecord.status !== oldRecord.status) {
       const statusMessages = {
-        'assigned': isDriver ? 'Você aceitou a corrida!' : 'Motorista aceito! Ele está a caminho.',
+        'assigned': userType === 'driver' ? 'Você aceitou a corrida!' : 'Motorista aceito! Ele está a caminho.',
         'in-progress': 'Corrida iniciada!',
         'completed': 'Corrida concluída com sucesso!',
         'cancelled': 'Corrida cancelada.'
@@ -116,7 +134,7 @@ export const useRideNotifications = (userId?: string | null, isDriver: boolean =
     }
 
     // Atualizar lista de solicitações pendentes
-    if (isDriver && eventType === 'INSERT' && newRecord.status === 'requested') {
+    if (userType === 'driver' && eventType === 'INSERT' && newRecord.status === 'requested') {
       fetchPendingRequests();
     }
   };

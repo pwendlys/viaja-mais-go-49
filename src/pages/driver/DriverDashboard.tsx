@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Car, MapPin, DollarSign, Clock, Star, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -6,29 +7,39 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import DriverHeader from '@/components/driver/DriverHeader';
 import MapView from '@/components/MapView';
-import RideRequestModal from '@/components/driver/RideRequestModal';
+import RealTimeRequestPanel from '@/components/driver/RealTimeRequestPanel';
 import { useDriverData } from '@/hooks/useDriverData';
-import { useRideNotifications } from '@/hooks/useRideNotifications';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 const DriverDashboard = () => {
   const { driverInfo, stats, recentRides, loading, toggleOnlineStatus } = useDriverData();
-  const { pendingRequests, acceptRide, rejectRide } = useRideNotifications(
-    driverInfo?.id || null, 
-    true // isDriver = true
-  );
-  
-  const [selectedRequest, setSelectedRequest] = useState<any>(null);
-  const [showRequestModal, setShowRequestModal] = useState(false);
+  const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
+
+  // Obter localização atual
+  React.useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setCurrentLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          });
+        },
+        (error) => {
+          console.error('Error getting location:', error);
+          // Usar localização padrão (Juiz de Fora)
+          setCurrentLocation({
+            lat: -21.7641,
+            lng: -43.3493
+          });
+        }
+      );
+    }
+  }, []);
 
   const handleToggleOnline = (checked: boolean) => {
     toggleOnlineStatus(checked);
-  };
-
-  const handleRequestClick = (request: any) => {
-    setSelectedRequest(request);
-    setShowRequestModal(true);
   };
 
   if (loading) {
@@ -98,79 +109,25 @@ const DriverDashboard = () => {
               </CardContent>
             </Card>
 
-            {/* Solicitações Pendentes */}
-            {pendingRequests.length > 0 && (
-              <Card className="border-viaja-green bg-gradient-to-r from-green-50 to-blue-50">
-                <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Bell className="h-5 w-5 text-viaja-green" />
-                    <span>Solicitações de Corrida ({pendingRequests.length})</span>
-                    <Badge variant="secondary" className="animate-pulse">Novo</Badge>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {pendingRequests.slice(0, 3).map((request) => (
-                    <div 
-                      key={request.id}
-                      className="p-3 bg-white rounded-lg cursor-pointer hover:shadow-md transition-shadow"
-                      onClick={() => handleRequestClick(request)}
-                    >
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <p className="font-semibold text-sm">{request.patientName}</p>
-                          <p className="text-xs text-gray-600 mt-1">
-                            {request.originAddress.length > 40 
-                              ? `${request.originAddress.substring(0, 40)}...` 
-                              : request.originAddress}
-                          </p>
-                          <p className="text-xs text-gray-600">
-                            → {request.destinationAddress.length > 40 
-                              ? `${request.destinationAddress.substring(0, 40)}...` 
-                              : request.destinationAddress}
-                          </p>
-                        </div>
-                        {request.price && (
-                          <Badge variant="secondary" className="ml-2">
-                            R$ {request.price.toFixed(2)}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                  {pendingRequests.length > 3 && (
-                    <p className="text-sm text-gray-600 text-center">
-                      E mais {pendingRequests.length - 3} solicitações...
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            )}
+            {/* Painel de Solicitações em Tempo Real */}
+            <RealTimeRequestPanel
+              driverId={driverInfo.id}
+              isOnline={driverInfo.isAvailable}
+              currentLocation={currentLocation}
+            />
 
             {/* Map */}
             <MapView 
               drivers={[{
                 id: driverInfo.id,
-                lat: -21.7641,
-                lng: -43.3493,
+                lat: currentLocation?.lat || -21.7641,
+                lng: currentLocation?.lng || -43.3493,
                 name: driverInfo.name,
                 rating: driverInfo.rating,
                 eta: '0 min'
               }]}
-              userLocation={{ lat: -21.7641, lng: -43.3493 }}
+              userLocation={currentLocation || { lat: -21.7641, lng: -43.3493 }}
             />
-
-            {/* Current Ride Status */}
-            {driverInfo.isAvailable && pendingRequests.length === 0 && (
-              <Card className="border-viaja-green bg-gradient-to-r from-green-50 to-blue-50">
-                <CardContent className="pt-6 text-center">
-                  <Car className="h-12 w-12 mx-auto mb-4 text-viaja-green" />
-                  <h3 className="font-semibold text-lg mb-2">Aguardando solicitações</h3>
-                  <p className="text-gray-600">
-                    Você está online e disponível para receber corridas
-                  </p>
-                </CardContent>
-              </Card>
-            )}
           </div>
 
           {/* Sidebar */}
@@ -290,15 +247,6 @@ const DriverDashboard = () => {
           </div>
         </div>
       </div>
-
-      {/* Modal de Solicitação */}
-      <RideRequestModal
-        isOpen={showRequestModal}
-        onClose={() => setShowRequestModal(false)}
-        request={selectedRequest}
-        onAccept={acceptRide}
-        onReject={rejectRide}
-      />
     </div>
   );
 };
