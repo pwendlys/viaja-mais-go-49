@@ -18,7 +18,7 @@ interface AuditLogEntry {
   new_values?: any;
   admin_id: string;
   created_at: string;
-  ip_address?: string;
+  ip_address?: unknown;
   user_agent?: string;
 }
 
@@ -82,8 +82,8 @@ const AuditLogs = () => {
 
     if (searchTerm) {
       filtered = filtered.filter(log =>
-        log.table_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        log.record_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        log.table_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        log.record_id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         log.action.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
@@ -104,11 +104,11 @@ const AuditLogs = () => {
       ['Data/Hora', 'Tabela', 'Ação', 'ID do Registro', 'Admin ID', 'IP'],
       ...filteredLogs.map(log => [
         new Date(log.created_at).toLocaleString('pt-BR'),
-        log.table_name,
+        log.table_name || 'N/A',
         log.action,
-        log.record_id,
+        log.record_id || 'N/A',
         log.admin_id,
-        log.ip_address || 'N/A'
+        log.ip_address ? String(log.ip_address) : 'N/A'
       ])
     ].map(row => row.join(',')).join('\n');
 
@@ -134,7 +134,7 @@ const AuditLogs = () => {
     }
   };
 
-  const uniqueTables = [...new Set(logs.map(log => log.table_name))];
+  const uniqueTables = [...new Set(logs.map(log => log.table_name).filter(Boolean))];
 
   if (isLoading) {
     return (
@@ -281,8 +281,8 @@ const AuditLogs = () => {
                     <Badge className={getActionColor(log.action)}>
                       {log.action}
                     </Badge>
-                    <span className="font-medium">{log.table_name}</span>
-                    <span className="text-gray-500">ID: {log.record_id.slice(0, 8)}...</span>
+                    <span className="font-medium">{log.table_name || 'N/A'}</span>
+                    <span className="text-gray-500">ID: {log.record_id?.slice(0, 8) || 'N/A'}...</span>
                   </div>
                   <span className="text-sm text-gray-500">
                     {new Date(log.created_at).toLocaleString('pt-BR')}
@@ -292,7 +292,7 @@ const AuditLogs = () => {
                 <div className="text-sm text-gray-600">
                   <span>Admin: {log.admin_id.slice(0, 8)}...</span>
                   {log.ip_address && (
-                    <span className="ml-4">IP: {log.ip_address}</span>
+                    <span className="ml-4">IP: {String(log.ip_address)}</span>
                   )}
                 </div>
 

@@ -131,14 +131,14 @@ export const useRideSync = () => {
     switch (type) {
       case 'create':
         const { error: createError } = await supabase
-          .from(table)
+          .from(table as any)
           .insert(data);
         if (createError) throw createError;
         break;
 
       case 'update':
         const { error: updateError } = await supabase
-          .from(table)
+          .from(table as any)
           .update(data.updates)
           .eq('id', data.id);
         if (updateError) throw updateError;
@@ -146,7 +146,7 @@ export const useRideSync = () => {
 
       case 'delete':
         const { error: deleteError } = await supabase
-          .from(table)
+          .from(table as any)
           .delete()
           .eq('id', data.id);
         if (deleteError) throw deleteError;

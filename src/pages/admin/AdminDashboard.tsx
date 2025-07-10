@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Users, Car, MapPin, DollarSign, AlertTriangle, TrendingUp, FileText, Settings } from 'lucide-react';
+import { Users, Car, MapPin, DollarSign, AlertTriangle, TrendingUp, FileText, Settings, Activity } from 'lucide-react';
 import AdminHeader from '@/components/admin/AdminHeader';
 import UserManagement from './UserManagement';
 import DriverManagement from './DriverManagement';
