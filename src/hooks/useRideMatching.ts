@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -35,7 +34,7 @@ export const useRideMatching = () => {
     try {
       console.log('Searching for drivers with criteria:', criteria);
 
-      // Buscar motoristas disponíveis próximos
+      // Buscar motoristas disponíveis próximos com join manual
       const { data: drivers, error } = await supabase
         .from('drivers')
         .select(`
@@ -46,10 +45,7 @@ export const useRideMatching = () => {
           rating,
           total_rides,
           current_lat,
-          current_lng,
-          profiles!inner(
-            full_name
-          )
+          current_lng
         `)
         .eq('is_available', true)
         .not('current_lat', 'is', null)
@@ -61,6 +57,15 @@ export const useRideMatching = () => {
         toast.error('Nenhum motorista disponível encontrado no momento.');
         return [];
       }
+
+      // Buscar nomes dos motoristas separadamente
+      const driverIds = drivers.map(d => d.id);
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, full_name')
+        .in('id', driverIds);
+
+      const profilesMap = new Map(profiles?.map(p => [p.id, p.full_name]) || []);
 
       // Calcular distâncias e tempos estimados
       const driversWithDistance = await Promise.all(
@@ -79,7 +84,7 @@ export const useRideMatching = () => {
 
           return {
             id: driver.id,
-            name: driver.profiles.full_name,
+            name: profilesMap.get(driver.id) || 'Motorista',
             rating: driver.rating || 5.0,
             distance,
             estimatedTime,

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -163,17 +162,10 @@ const RealtimeAnalytics = () => {
   const refreshViews = async () => {
     try {
       setIsLoading(true);
-      
-      // Atualizar views materializadas
-      await Promise.all([
-        supabase.rpc('refresh materialized view mv_ride_statistics'),
-        supabase.rpc('refresh materialized view mv_driver_performance')
-      ]);
-
       await fetchMetrics();
       toast.success('Dados atualizados com sucesso!');
     } catch (error) {
-      console.error('Error refreshing views:', error);
+      console.error('Error refreshing data:', error);
       toast.error('Erro ao atualizar dados');
     }
   };

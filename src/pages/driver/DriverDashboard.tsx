@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Car, MapPin, DollarSign, Clock, Star, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -17,7 +16,7 @@ const DriverDashboard = () => {
   const { driverInfo, stats, recentRides, loading, toggleOnlineStatus } = useDriverData();
   const { pendingRequests, acceptRide, rejectRide } = useRideNotifications(
     driverInfo?.id || null, 
-    driverInfo?.isAvailable || false
+    true // isDriver = true
   );
   
   const [selectedRequest, setSelectedRequest] = useState<any>(null);
