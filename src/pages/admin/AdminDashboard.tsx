@@ -1,92 +1,47 @@
 
-import React, { useState, useEffect } from 'react';
-import { Users, Car, MapPin, DollarSign, FileText, AlertTriangle, TrendingUp, Clock, CheckCircle } from 'lucide-react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Users, Car, MapPin, DollarSign, AlertTriangle, TrendingUp, FileText, Settings } from 'lucide-react';
 import AdminHeader from '@/components/admin/AdminHeader';
 import UserManagement from './UserManagement';
 import DriverManagement from './DriverManagement';
 import RideManagement from './RideManagement';
+import AnalyticsDashboard from './AnalyticsDashboard';
 import PricingConfig from './PricingConfig';
-import PaymentManagement from './PaymentManagement';
-import { healthTransportApi } from '@/services/healthTransportApi';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import RealtimeAnalytics from '@/components/admin/RealtimeAnalytics';
+import AuditLogs from '@/components/admin/AuditLogs';
+import SystemSettings from '@/components/admin/SystemSettings';
+import { useAnalyticsData } from '@/hooks/useAnalyticsData';
+import { useDriversData } from '@/hooks/useDriversData';
+import { usePatientsData } from '@/hooks/usePatientsData';
 
 const AdminDashboard = () => {
-  const [stats, setStats] = useState({
-    total_patients: 0,
-    total_drivers: 0,
-    total_rides: 0,
-    active_rides: 0,
-    pending_patient_approvals: 0,
-    pending_driver_approvals: 0
-  });
-  const [recentRides, setRecentRides] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const { stats, isLoading: analyticsLoading } = useAnalyticsData();
+  const { drivers, isLoading: driversLoading } = useDriversData();
+  const { patients, isLoading: patientsLoading } = usePatientsData();
 
   const adminData = {
     name: 'Administrador Municipal',
-    email: 'admin@prefeitura.gov.br',
+    email: 'admin@viajamais.com',
     role: 'Super Admin'
   };
 
-  useEffect(() => {
-    loadDashboardData();
-  }, []);
+  const pendingApprovals = [
+    ...drivers.filter(d => d.documentsStatus === 'Pendente'),
+    ...patients.filter(p => p.documentsStatus === 'Pendente')
+  ];
 
-  const loadDashboardData = async () => {
-    try {
-      setLoading(true);
-      
-      // Carregar estatísticas básicas
-      const data = await healthTransportApi.getDashboardStats();
-      
-      // Carregar aprovações pendentes
-      const { data: pendingPatients } = await supabase
-        .from('user_approvals')
-        .select('*')
-        .eq('user_type', 'patient')
-        .eq('status', 'pending');
-
-      const { data: pendingDrivers } = await supabase
-        .from('user_approvals')
-        .select('*')
-        .eq('user_type', 'driver')
-        .eq('status', 'pending');
-
-      setStats({
-        ...data.stats,
-        pending_patient_approvals: pendingPatients?.length || 0,
-        pending_driver_approvals: pendingDrivers?.length || 0
-      });
-      
-      setRecentRides(data.recent_rides);
-    } catch (error) {
-      console.error('Erro ao carregar dados do dashboard:', error);
-      toast.error('Erro ao carregar dados do dashboard');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return 'text-green-600 bg-green-100';
-      case 'in_progress':
-        return 'text-blue-600 bg-blue-100';
-      case 'cancelled':
-        return 'text-red-600 bg-red-100';
-      default:
-        return 'text-yellow-600 bg-yellow-100';
-    }
-  };
-
-  if (loading) {
+  if (analyticsLoading || driversLoading || patientsLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-viaja-blue"></div>
+      <div className="min-h-screen bg-gray-50">
+        <AdminHeader admin={adminData} />
+        <div className="container mx-auto px-4 py-6 max-w-7xl">
+          <div className="flex justify-center items-center h-64">
+            <div className="text-lg">Carregando painel administrativo...</div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -96,60 +51,67 @@ const AdminDashboard = () => {
       <AdminHeader admin={adminData} />
       
       <div className="container mx-auto px-4 py-6 max-w-7xl">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">
-            Painel Administrativo
-          </h1>
-          <p className="text-gray-600">
-            Sistema de gestão do transporte de saúde municipal
-          </p>
-        </div>
-
-        <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6">
-            <TabsTrigger value="overview">Visão Geral</TabsTrigger>
-            <TabsTrigger value="patients">Pacientes</TabsTrigger>
-            <TabsTrigger value="drivers">Motoristas</TabsTrigger>
-            <TabsTrigger value="rides">Corridas</TabsTrigger>
-            <TabsTrigger value="payments">Pagamentos</TabsTrigger>
-            <TabsTrigger value="pricing">Preços</TabsTrigger>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8">
+            <TabsTrigger value="dashboard" className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              <span className="hidden sm:inline">Dashboard</span>
+            </TabsTrigger>
+            <TabsTrigger value="users" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              <span className="hidden sm:inline">Pacientes</span>
+            </TabsTrigger>
+            <TabsTrigger value="drivers" className="flex items-center gap-2">
+              <Car className="h-4 w-4" />
+              <span className="hidden sm:inline">Motoristas</span>
+            </TabsTrigger>
+            <TabsTrigger value="rides" className="flex items-center gap-2">
+              <MapPin className="h-4 w-4" />
+              <span className="hidden sm:inline">Corridas</span>
+            </TabsTrigger>
+            <TabsTrigger value="pricing" className="flex items-center gap-2">
+              <DollarSign className="h-4 w-4" />
+              <span className="hidden sm:inline">Preços</span>
+            </TabsTrigger>
+            <TabsTrigger value="analytics" className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              <span className="hidden sm:inline">Relatórios</span>
+            </TabsTrigger>
+            <TabsTrigger value="realtime" className="flex items-center gap-2">
+              <Activity className="h-4 w-4" />
+              <span className="hidden sm:inline">Tempo Real</span>
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              <span className="hidden sm:inline">Configurações</span>
+            </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview" className="space-y-6">
-            {/* Stats Cards */}
+          <TabsContent value="dashboard" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h1 className="text-2xl font-bold">Dashboard Administrativo</h1>
+              {pendingApprovals.length > 0 && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <div className="flex items-center space-x-2">
+                    <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                    <span className="font-medium text-yellow-800">
+                      {pendingApprovals.length} aprovação(ões) pendente(s)
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Métricas Principais */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <Card>
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-gray-600">Total de Pacientes</p>
-                      <p className="text-2xl font-bold text-viaja-blue">{stats.total_patients}</p>
-                    </div>
-                    <Users className="h-8 w-8 text-viaja-blue" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Total de Motoristas</p>
-                      <p className="text-2xl font-bold text-viaja-green">{stats.total_drivers}</p>
-                    </div>
-                    <Car className="h-8 w-8 text-viaja-green" />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
                       <p className="text-sm font-medium text-gray-600">Total de Corridas</p>
-                      <p className="text-2xl font-bold text-purple-600">{stats.total_rides}</p>
+                      <p className="text-2xl font-bold text-viaja-blue">{stats.totalRides}</p>
                     </div>
-                    <MapPin className="h-8 w-8 text-purple-600" />
+                    <MapPin className="h-8 w-8 text-viaja-blue" />
                   </div>
                 </CardContent>
               </Card>
@@ -158,142 +120,114 @@ const AdminDashboard = () => {
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-gray-600">Corridas Ativas</p>
-                      <p className="text-2xl font-bold text-orange-600">{stats.active_rides}</p>
+                      <p className="text-sm font-medium text-gray-600">Receita Total</p>
+                      <p className="text-2xl font-bold text-green-600">R$ {stats.totalRevenue.toFixed(2)}</p>
                     </div>
-                    <Clock className="h-8 w-8 text-orange-600" />
+                    <DollarSign className="h-8 w-8 text-green-600" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Motoristas Ativos</p>
+                      <p className="text-2xl font-bold text-blue-600">{stats.activeDrivers}</p>
+                    </div>
+                    <Car className="h-8 w-8 text-blue-600" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-600">Pacientes Ativos</p>
+                      <p className="text-2xl font-bold text-purple-600">{stats.activeUsers}</p>
+                    </div>
+                    <Users className="h-8 w-8 text-purple-600" />
                   </div>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Aprovações Pendentes */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card className="cursor-pointer hover:shadow-lg transition-shadow">
-                <CardContent className="pt-6">
-                  <div className="flex items-center space-x-4">
-                    <div className="p-3 bg-yellow-100 rounded-full">
-                      <AlertTriangle className="h-6 w-6 text-yellow-600" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold">Pacientes Pendentes</h3>
-                      <p className="text-sm text-gray-600">
-                        {stats.pending_patient_approvals} cadastros aguardando aprovação
-                      </p>
-                    </div>
-                    <div className="text-2xl font-bold text-yellow-600">
-                      {stats.pending_patient_approvals}
-                    </div>
+            {/* Gráficos e Métricas Detalhadas */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Taxa de Conclusão</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-green-600 mb-2">
+                    {stats.completionRate.toFixed(1)}%
                   </div>
+                  <p className="text-gray-600">
+                    Corridas completadas com sucesso
+                  </p>
                 </CardContent>
               </Card>
 
-              <Card className="cursor-pointer hover:shadow-lg transition-shadow">
-                <CardContent className="pt-6">
-                  <div className="flex items-center space-x-4">
-                    <div className="p-3 bg-blue-100 rounded-full">
-                      <Car className="h-6 w-6 text-blue-600" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold">Motoristas Pendentes</h3>
-                      <p className="text-sm text-gray-600">
-                        {stats.pending_driver_approvals} cadastros aguardando aprovação
-                      </p>
-                    </div>
-                    <div className="text-2xl font-bold text-blue-600">
-                      {stats.pending_driver_approvals}
-                    </div>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Avaliação Média</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-yellow-600 mb-2">
+                    ⭐ {stats.avgRating.toFixed(1)}
                   </div>
+                  <p className="text-gray-600">
+                    Avaliação média dos motoristas
+                  </p>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Quick Actions */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Card className="cursor-pointer hover:shadow-lg transition-shadow">
-                <CardContent className="pt-6">
-                  <div className="flex items-center space-x-4">
-                    <div className="p-3 bg-green-100 rounded-full">
-                      <DollarSign className="h-6 w-6 text-green-600" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold">Gerenciar Pagamentos</h3>
-                      <p className="text-sm text-gray-600">Controlar pagamentos aos motoristas</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="cursor-pointer hover:shadow-lg transition-shadow">
-                <CardContent className="pt-6">
-                  <div className="flex items-center space-x-4">
-                    <div className="p-3 bg-purple-100 rounded-full">
-                      <TrendingUp className="h-6 w-6 text-purple-600" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold">Configurar Preços</h3>
-                      <p className="text-sm text-gray-600">Definir tarifas por tipo de veículo</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="cursor-pointer hover:shadow-lg transition-shadow">
-                <CardContent className="pt-6">
-                  <div className="flex items-center space-x-4">
-                    <div className="p-3 bg-blue-100 rounded-full">
-                      <FileText className="h-6 w-6 text-blue-600" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold">Relatórios</h3>
-                      <p className="text-sm text-gray-600">Gerar relatórios detalhados</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Recent Rides */}
+            {/* Ações Rápidas */}
             <Card>
               <CardHeader>
-                <CardTitle>Corridas Recentes</CardTitle>
+                <CardTitle>Ações Rápidas</CardTitle>
               </CardHeader>
               <CardContent>
-                {recentRides.length === 0 ? (
-                  <div className="text-center py-8">
-                    <MapPin className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-500">Nenhuma corrida registrada ainda</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {recentRides.slice(0, 5).map((ride: any) => (
-                      <div key={ride.id} className="flex items-center justify-between p-4 border rounded-lg">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-2">
-                            <span className="font-medium">{ride.profiles?.full_name || 'Paciente'}</span>
-                            <span className={`px-2 py-1 rounded-full text-xs ${getStatusColor(ride.status)}`}>
-                              {ride.status}
-                            </span>
-                          </div>
-                          <p className="text-sm text-gray-600 mt-1">
-                            {ride.origin_address} → {ride.destination_address}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-medium">R$ {ride.price?.toFixed(2) || '0.00'}</p>
-                          <p className="text-xs text-gray-500">
-                            {new Date(ride.created_at).toLocaleDateString('pt-BR')}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <button
+                    onClick={() => setActiveTab('users')}
+                    className="p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+                  >
+                    <Users className="h-6 w-6 text-blue-600 mb-2" />
+                    <p className="text-sm font-medium">Gerenciar Pacientes</p>
+                  </button>
+                  
+                  <button
+                    onClick={() => setActiveTab('drivers')}
+                    className="p-4 bg-green-50 rounded-lg hover:bg-green-100 transition-colors"
+                  >
+                    <Car className="h-6 w-6 text-green-600 mb-2" />
+                    <p className="text-sm font-medium">Gerenciar Motoristas</p>
+                  </button>
+                  
+                  <button
+                    onClick={() => setActiveTab('pricing')}
+                    className="p-4 bg-yellow-50 rounded-lg hover:bg-yellow-100 transition-colors"
+                  >
+                    <DollarSign className="h-6 w-6 text-yellow-600 mb-2" />
+                    <p className="text-sm font-medium">Configurar Preços</p>
+                  </button>
+                  
+                  <button
+                    onClick={() => setActiveTab('analytics')}
+                    className="p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
+                  >
+                    <FileText className="h-6 w-6 text-purple-600 mb-2" />
+                    <p className="text-sm font-medium">Ver Relatórios</p>
+                  </button>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="patients">
+          <TabsContent value="users">
             <UserManagement />
           </TabsContent>
 
@@ -305,12 +239,20 @@ const AdminDashboard = () => {
             <RideManagement />
           </TabsContent>
 
-          <TabsContent value="payments">
-            <PaymentManagement />
-          </TabsContent>
-
           <TabsContent value="pricing">
             <PricingConfig />
+          </TabsContent>
+
+          <TabsContent value="analytics">
+            <AnalyticsDashboard />
+          </TabsContent>
+
+          <TabsContent value="realtime">
+            <RealtimeAnalytics />
+          </TabsContent>
+
+          <TabsContent value="settings">
+            <SystemSettings />
           </TabsContent>
         </Tabs>
       </div>
