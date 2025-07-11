@@ -37,7 +37,7 @@ export const useAuth = () => {
               id: profile.id,
               full_name: profile.full_name,
               email: session.user.email || '',
-              user_type: profile.user_type,
+              user_type: profile.user_type as 'admin' | 'patient' | 'driver',
               is_active: profile.is_active
             });
           }
@@ -66,7 +66,7 @@ export const useAuth = () => {
             id: profile.id,
             full_name: profile.full_name,
             email: session.user.email || '',
-            user_type: profile.user_type,
+            user_type: profile.user_type as 'admin' | 'patient' | 'driver',
             is_active: profile.is_active
           });
         }
