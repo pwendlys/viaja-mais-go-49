@@ -14,8 +14,17 @@ export const useAdminAuth = () => {
         const { data: { user: currentUser } } = await supabase.auth.getUser();
         setUser(currentUser);
 
-        if (currentUser && currentUser.email === 'adm@adm.com') {
-          setIsAdmin(true);
+        if (currentUser) {
+          // Check if user is admin by querying profiles table
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('user_type')
+            .eq('id', currentUser.id)
+            .single();
+          
+          if (profile && profile.user_type === 'admin') {
+            setIsAdmin(true);
+          }
         }
       } catch (error) {
         console.error('Error checking admin status:', error);
@@ -27,11 +36,21 @@ export const useAdminAuth = () => {
     checkAdminStatus();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         if (session?.user) {
           setUser(session.user);
-          if (session.user.email === 'adm@adm.com') {
+          
+          // Check admin status
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('user_type')
+            .eq('id', session.user.id)
+            .single();
+          
+          if (profile && profile.user_type === 'admin') {
             setIsAdmin(true);
+          } else {
+            setIsAdmin(false);
           }
         } else {
           setUser(null);

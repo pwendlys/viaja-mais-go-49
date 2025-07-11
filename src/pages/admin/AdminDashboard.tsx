@@ -3,10 +3,11 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, Settings, Activity } from 'lucide-react';
 import AdminHeader from '@/components/admin/AdminHeader';
-import { useAdminAuth } from '@/hooks/useAdminAuth';
+import { useAuth } from '@/hooks/useAuth';
+import { Navigate } from 'react-router-dom';
 
 const AdminDashboard = () => {
-  const { user, isAdmin, loading } = useAdminAuth();
+  const { userProfile, loading } = useAuth();
 
   const adminData = {
     name: 'Administrador',
@@ -27,22 +28,8 @@ const AdminDashboard = () => {
     );
   }
 
-  if (!isAdmin) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Card className="w-full max-w-md">
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <h2 className="text-xl font-bold mb-4">Acesso Negado</h2>
-              <p className="text-gray-600 mb-4">Você não tem permissão para acessar esta área.</p>
-              <a href="/login" className="text-blue-600 hover:underline">
-                Fazer login como administrador
-              </a>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
+  if (!userProfile || userProfile.user_type !== 'admin') {
+    return <Navigate to="/login" replace />;
   }
 
   return (
@@ -104,26 +91,28 @@ const AdminDashboard = () => {
               <div>
                 <h3 className="font-semibold">Status do Banco de Dados</h3>
                 <p className="text-sm text-gray-600">
-                  Banco de dados limpo e reconfigurado com sucesso. 
-                  Sistema pronto para configuração adicional.
+                  Sistema de autenticação configurado para todos os tipos de usuários.
+                  Banco de dados reconfigurado com sucesso.
                 </p>
               </div>
               
               <div>
                 <h3 className="font-semibold">Usuário Administrador</h3>
                 <p className="text-sm text-gray-600">
-                  Login: {user?.email}<br/>
-                  Status: Ativo<br/>
-                  Permissões: Administrador completo
+                  Login: {userProfile?.email}<br/>
+                  Nome: {userProfile?.full_name}<br/>
+                  Tipo: {userProfile?.user_type}<br/>
+                  Status: Ativo
                 </p>
               </div>
 
               <div>
-                <h3 className="font-semibold">Próximos Passos</h3>
+                <h3 className="font-semibold">Sistema de Login</h3>
                 <ul className="text-sm text-gray-600 list-disc list-inside space-y-1">
-                  <li>Configurar módulos do sistema conforme necessário</li>
-                  <li>Adicionar funcionalidades específicas</li>
-                  <li>Configurar permissões e usuários adicionais</li>
+                  <li>Admin: Redirecionamento para /admin/dashboard</li>
+                  <li>Paciente: Redirecionamento para /user/dashboard</li>
+                  <li>Motorista: Redirecionamento para /driver/dashboard</li>
+                  <li>Sistema de cadastro disponível em /auth/register</li>
                 </ul>
               </div>
             </div>

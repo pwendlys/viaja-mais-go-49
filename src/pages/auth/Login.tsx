@@ -7,30 +7,24 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
-import { useAdminAuth } from '@/hooks/useAdminAuth';
+import { useAuth } from '@/hooks/useAuth';
 
 const Login = () => {
   const navigate = useNavigate();
-  const { loginAsAdmin } = useAdminAuth();
+  const { signIn, user, userProfile, loading, getRedirectPath } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   });
 
-  // Check if user is already logged in
+  // Redirect if already logged in
   useEffect(() => {
-    const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session && session.user.email === 'adm@adm.com') {
-        navigate('/admin/dashboard');
-      }
-    };
-
-    checkUser();
-  }, [navigate]);
+    if (!loading && user && userProfile) {
+      navigate(getRedirectPath());
+    }
+  }, [user, userProfile, loading, navigate, getRedirectPath]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,34 +34,35 @@ const Login = () => {
       return;
     }
 
-    setLoading(true);
+    setIsLoading(true);
 
     try {
-      // Check if it's admin credentials
-      if (formData.email === 'adm@adm.com' && formData.password === 'adm@2025') {
-        const { data, error } = await loginAsAdmin(formData.email, formData.password);
-        
-        if (error) {
-          console.error('Admin login error:', error);
-          toast.error('Erro no login: ' + error.message);
-          return;
-        }
+      const { data, error } = await signIn(formData.email, formData.password);
+      
+      if (error) {
+        toast.error('Erro no login: ' + error.message);
+        return;
+      }
 
-        if (data?.user) {
-          toast.success('Login administrativo realizado com sucesso!');
-          navigate('/admin/dashboard');
-          return;
-        }
-      } else {
-        toast.error('Credenciais inválidas. Use as credenciais de administrador.');
+      if (data?.user) {
+        toast.success('Login realizado com sucesso!');
+        // Navigation will be handled by the useEffect above
       }
     } catch (error) {
       console.error('Unexpected login error:', error);
       toast.error('Erro inesperado ao fazer login');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-viaja-blue/10 to-viaja-green/10">
+        <div className="text-lg">Carregando...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-viaja-blue/10 to-viaja-green/10 p-4">
@@ -79,9 +74,9 @@ const Login = () => {
             </div>
           </div>
           <CardTitle className="text-2xl gradient-viaja bg-clip-text text-transparent">
-            Acesso Administrativo
+            Viaja+
           </CardTitle>
-          <p className="text-gray-600">Sistema de Gestão</p>
+          <p className="text-gray-600">Entre com sua conta</p>
         </CardHeader>
         
         <CardContent>
@@ -91,7 +86,7 @@ const Login = () => {
               <Input
                 id="email"
                 type="email"
-                placeholder="adm@adm.com"
+                placeholder="seu@email.com"
                 value={formData.email}
                 onChange={(e) => setFormData({...formData, email: e.target.value})}
                 required
@@ -124,23 +119,26 @@ const Login = () => {
             <Button 
               type="submit" 
               className="w-full gradient-viaja text-white"
-              disabled={loading}
+              disabled={isLoading}
             >
-              {loading ? 'Entrando...' : 'Entrar'}
+              {isLoading ? 'Entrando...' : 'Entrar'}
             </Button>
             
-            <div className="text-center">
+            <div className="text-center space-y-2">
+              <Link to="/auth/register" className="text-sm text-viaja-blue hover:underline">
+                Não tem uma conta? Cadastre-se
+              </Link>
+              <br />
               <Link to="/" className="text-sm text-gray-600 hover:underline">
                 Voltar ao início
               </Link>
             </div>
           </form>
 
-          {/* Admin credentials info */}
+          {/* Admin credentials info for development */}
           <div className="mt-6 p-3 bg-gray-50 rounded-lg text-xs text-gray-600">
-            <p className="font-semibold mb-1">Credenciais de Administrador:</p>
-            <p>Email: adm@adm.com</p>
-            <p>Senha: adm@2025</p>
+            <p className="font-semibold mb-1">Credenciais para teste:</p>
+            <p>Admin - Email: adm@adm.com | Senha: adm@2025</p>
           </div>
         </CardContent>
       </Card>
