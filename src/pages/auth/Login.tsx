@@ -24,23 +24,8 @@ const Login = () => {
   useEffect(() => {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        // Redirect based on user type
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('user_type, admin_role')
-          .eq('id', session.user.id)
-          .single();
-
-        if (profile?.admin_role === 'admin') {
-          navigate('/admin/dashboard');
-        } else if (profile?.user_type === 'patient') {
-          navigate('/user/dashboard');
-        } else if (profile?.user_type === 'driver') {
-          navigate('/driver/dashboard');
-        } else {
-          navigate('/user/dashboard');
-        }
+      if (session && session.user.email === 'adm@adm.com') {
+        navigate('/admin/dashboard');
       }
     };
 
@@ -59,12 +44,12 @@ const Login = () => {
 
     try {
       // Check if it's admin credentials
-      if (formData.email === 'admin@admin.com' && formData.password === 'admin@2025') {
+      if (formData.email === 'adm@adm.com' && formData.password === 'adm@2025') {
         const { data, error } = await loginAsAdmin(formData.email, formData.password);
         
         if (error) {
           console.error('Admin login error:', error);
-          toast.error('Erro no login administrativo');
+          toast.error('Erro no login: ' + error.message);
           return;
         }
 
@@ -73,46 +58,8 @@ const Login = () => {
           navigate('/admin/dashboard');
           return;
         }
-      }
-
-      // Regular login flow
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: formData.email,
-        password: formData.password,
-      });
-
-      if (error) {
-        console.error('Login error:', error);
-        toast.error('Erro ao fazer login: ' + error.message);
-        return;
-      }
-
-      if (data.user) {
-        // Check user profile to determine redirect
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('user_type, admin_role')
-          .eq('id', data.user.id)
-          .single();
-
-        if (profileError) {
-          console.error('Profile error:', profileError);
-          toast.error('Erro ao buscar perfil do usuário');
-          return;
-        }
-
-        toast.success('Login realizado com sucesso!');
-        
-        // Redirect based on profile
-        if (profile?.admin_role === 'admin') {
-          navigate('/admin/dashboard');
-        } else if (profile?.user_type === 'patient') {
-          navigate('/user/dashboard');
-        } else if (profile?.user_type === 'driver') {
-          navigate('/driver/dashboard');
-        } else {
-          navigate('/user/dashboard');
-        }
+      } else {
+        toast.error('Credenciais inválidas. Use as credenciais de administrador.');
       }
     } catch (error) {
       console.error('Unexpected login error:', error);
@@ -132,9 +79,9 @@ const Login = () => {
             </div>
           </div>
           <CardTitle className="text-2xl gradient-viaja bg-clip-text text-transparent">
-            Entrar no Viaja+
+            Acesso Administrativo
           </CardTitle>
-          <p className="text-gray-600">Transporte Saúde Municipal</p>
+          <p className="text-gray-600">Sistema de Gestão</p>
         </CardHeader>
         
         <CardContent>
@@ -144,7 +91,7 @@ const Login = () => {
               <Input
                 id="email"
                 type="email"
-                placeholder="seu@email.com"
+                placeholder="adm@adm.com"
                 value={formData.email}
                 onChange={(e) => setFormData({...formData, email: e.target.value})}
                 required
@@ -182,22 +129,18 @@ const Login = () => {
               {loading ? 'Entrando...' : 'Entrar'}
             </Button>
             
-            <div className="text-center space-y-2">
-              <Link to="/register" className="text-sm text-viaja-blue hover:underline">
-                Não tem conta? Cadastre-se
-              </Link>
-              <br />
+            <div className="text-center">
               <Link to="/" className="text-sm text-gray-600 hover:underline">
                 Voltar ao início
               </Link>
             </div>
           </form>
 
-          {/* Admin credentials info for development */}
+          {/* Admin credentials info */}
           <div className="mt-6 p-3 bg-gray-50 rounded-lg text-xs text-gray-600">
-            <p className="font-semibold mb-1">Acesso Administrativo:</p>
-            <p>Email: admin@admin.com</p>
-            <p>Senha: admin@2025</p>
+            <p className="font-semibold mb-1">Credenciais de Administrador:</p>
+            <p>Email: adm@adm.com</p>
+            <p>Senha: adm@2025</p>
           </div>
         </CardContent>
       </Card>

@@ -19,10 +19,7 @@ const AdminAccessButton = () => {
     return null;
   }
 
-  if (!isAdmin) {
-    return null;
-  }
-
+  // Always show the button on login page for easy access
   return (
     <div className="fixed top-4 right-4 z-50">
       <Button

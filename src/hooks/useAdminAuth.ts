@@ -14,16 +14,8 @@ export const useAdminAuth = () => {
         const { data: { user: currentUser } } = await supabase.auth.getUser();
         setUser(currentUser);
 
-        if (currentUser) {
-          const { data: profile, error } = await supabase
-            .from('profiles')
-            .select('admin_role')
-            .eq('id', currentUser.id)
-            .single();
-
-          if (!error && profile?.admin_role === 'admin') {
-            setIsAdmin(true);
-          }
+        if (currentUser && currentUser.email === 'adm@adm.com') {
+          setIsAdmin(true);
         }
       } catch (error) {
         console.error('Error checking admin status:', error);
@@ -37,12 +29,15 @@ export const useAdminAuth = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         if (session?.user) {
-          checkAdminStatus();
+          setUser(session.user);
+          if (session.user.email === 'adm@adm.com') {
+            setIsAdmin(true);
+          }
         } else {
           setUser(null);
           setIsAdmin(false);
-          setLoading(false);
         }
+        setLoading(false);
       }
     );
 
@@ -58,29 +53,6 @@ export const useAdminAuth = () => {
 
       if (error) {
         throw error;
-      }
-
-      // Se for o admin específico, criar/atualizar o usuário na tabela auth
-      if (email === 'admin@admin.com') {
-        // Verificar se o perfil admin existe
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', data.user.id)
-          .single();
-
-        if (!profile) {
-          // Criar perfil admin se não existir
-          await supabase
-            .from('profiles')
-            .insert({
-              id: data.user.id,
-              full_name: 'Administrador Sistema',
-              user_type: 'admin',
-              admin_role: 'admin',
-              is_active: true
-            });
-        }
       }
 
       return { data, error: null };
