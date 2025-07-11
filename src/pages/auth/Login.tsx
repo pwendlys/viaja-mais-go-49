@@ -8,9 +8,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useAdminAuth } from '@/hooks/useAdminAuth';
 
 const Login = () => {
   const navigate = useNavigate();
+  const { loginAsAdmin } = useAdminAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -26,16 +28,16 @@ const Login = () => {
         // Redirect based on user type
         const { data: profile } = await supabase
           .from('profiles')
-          .select('user_type')
+          .select('user_type, admin_role')
           .eq('id', session.user.id)
           .single();
 
-        if (profile?.user_type === 'patient') {
+        if (profile?.admin_role === 'admin') {
+          navigate('/admin/dashboard');
+        } else if (profile?.user_type === 'patient') {
           navigate('/user/dashboard');
         } else if (profile?.user_type === 'driver') {
           navigate('/driver/dashboard');
-        } else if (profile?.user_type === 'admin') {
-          navigate('/admin/dashboard');
         } else {
           navigate('/user/dashboard');
         }
@@ -56,6 +58,24 @@ const Login = () => {
     setLoading(true);
 
     try {
+      // Check if it's admin credentials
+      if (formData.email === 'admin@admin.com' && formData.password === 'admin@2025') {
+        const { data, error } = await loginAsAdmin(formData.email, formData.password);
+        
+        if (error) {
+          console.error('Admin login error:', error);
+          toast.error('Erro no login administrativo');
+          return;
+        }
+
+        if (data?.user) {
+          toast.success('Login administrativo realizado com sucesso!');
+          navigate('/admin/dashboard');
+          return;
+        }
+      }
+
+      // Regular login flow
       const { data, error } = await supabase.auth.signInWithPassword({
         email: formData.email,
         password: formData.password,
@@ -71,7 +91,7 @@ const Login = () => {
         // Check user profile to determine redirect
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
-          .select('user_type')
+          .select('user_type, admin_role')
           .eq('id', data.user.id)
           .single();
 
@@ -83,15 +103,15 @@ const Login = () => {
 
         toast.success('Login realizado com sucesso!');
         
-        // Redirect based on profile user_type
-        if (profile?.user_type === 'patient') {
+        // Redirect based on profile
+        if (profile?.admin_role === 'admin') {
+          navigate('/admin/dashboard');
+        } else if (profile?.user_type === 'patient') {
           navigate('/user/dashboard');
         } else if (profile?.user_type === 'driver') {
           navigate('/driver/dashboard');
-        } else if (profile?.user_type === 'admin') {
-          navigate('/admin/dashboard');
         } else {
-          navigate('/user/dashboard'); // Default fallback
+          navigate('/user/dashboard');
         }
       }
     } catch (error) {
@@ -172,6 +192,13 @@ const Login = () => {
               </Link>
             </div>
           </form>
+
+          {/* Admin credentials info for development */}
+          <div className="mt-6 p-3 bg-gray-50 rounded-lg text-xs text-gray-600">
+            <p className="font-semibold mb-1">Acesso Administrativo:</p>
+            <p>Email: admin@admin.com</p>
+            <p>Senha: admin@2025</p>
+          </div>
         </CardContent>
       </Card>
     </div>
