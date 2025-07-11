@@ -25,14 +25,22 @@ export const useAuth = () => {
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          // Fetch user profile
+          // Fetch user profile and include email from auth.users
           const { data: profile } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', session.user.id)
             .single();
           
-          setUserProfile(profile);
+          if (profile) {
+            setUserProfile({
+              id: profile.id,
+              full_name: profile.full_name,
+              email: session.user.email || '',
+              user_type: profile.user_type,
+              is_active: profile.is_active
+            });
+          }
         } else {
           setUserProfile(null);
         }
@@ -53,7 +61,15 @@ export const useAuth = () => {
           .eq('id', session.user.id)
           .single();
         
-        setUserProfile(profile);
+        if (profile) {
+          setUserProfile({
+            id: profile.id,
+            full_name: profile.full_name,
+            email: session.user.email || '',
+            user_type: profile.user_type,
+            is_active: profile.is_active
+          });
+        }
       }
       
       setLoading(false);
@@ -101,7 +117,6 @@ export const useAuth = () => {
           .insert({
             id: data.user.id,
             full_name: userData.full_name,
-            email: email,
             user_type: userData.user_type
           });
 
