@@ -15,12 +15,18 @@ import SystemSettings from '@/components/admin/SystemSettings';
 import { useAnalyticsData } from '@/hooks/useAnalyticsData';
 import { useDriversData } from '@/hooks/useDriversData';
 import { usePatientsData } from '@/hooks/usePatientsData';
+import { useAdminAuth } from '@/hooks/useAdminAuth';
+import { useAdminRealtime } from '@/hooks/useAdminRealtime';
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const { stats, isLoading: analyticsLoading } = useAnalyticsData();
   const { drivers, isLoading: driversLoading } = useDriversData();
   const { patients, isLoading: patientsLoading } = usePatientsData();
+  const { isAdmin } = useAdminAuth();
+  
+  // Integrar tempo real com todos os bancos de dados
+  const { stats: realtimeStats, isConnected, refreshStats } = useAdminRealtime(isAdmin);
 
   const adminData = {
     name: 'Administrador Municipal',
@@ -90,26 +96,38 @@ const AdminDashboard = () => {
           <TabsContent value="dashboard" className="space-y-6">
             <div className="flex justify-between items-center">
               <h1 className="text-2xl font-bold">Dashboard Administrativo</h1>
-              {pendingApprovals.length > 0 && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                  <div className="flex items-center space-x-2">
-                    <AlertTriangle className="h-5 w-5 text-yellow-600" />
-                    <span className="font-medium text-yellow-800">
-                      {pendingApprovals.length} aprovação(ões) pendente(s)
-                    </span>
-                  </div>
+              <div className="flex items-center gap-4">
+                {/* Status de conexão tempo real */}
+                <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm ${
+                  isConnected ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                }`}>
+                  <div className={`w-2 h-2 rounded-full ${
+                    isConnected ? 'bg-green-500' : 'bg-red-500'
+                  }`}></div>
+                  {isConnected ? 'Tempo Real Conectado' : 'Desconectado'}
                 </div>
-              )}
+                
+                {pendingApprovals.length > 0 && (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <div className="flex items-center space-x-2">
+                      <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                      <span className="font-medium text-yellow-800">
+                        {pendingApprovals.length} aprovação(ões) pendente(s)
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* Métricas Principais */}
+            {/* Métricas Principais em Tempo Real */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <Card>
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-gray-600">Total de Corridas</p>
-                      <p className="text-2xl font-bold text-viaja-blue">{stats.totalRides}</p>
+                      <p className="text-2xl font-bold text-viaja-blue">{realtimeStats.totalRides || stats.totalRides}</p>
                     </div>
                     <MapPin className="h-8 w-8 text-viaja-blue" />
                   </div>
@@ -132,8 +150,8 @@ const AdminDashboard = () => {
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-gray-600">Motoristas Ativos</p>
-                      <p className="text-2xl font-bold text-blue-600">{stats.activeDrivers}</p>
+                      <p className="text-sm font-medium text-gray-600">Motoristas Disponíveis</p>
+                      <p className="text-2xl font-bold text-blue-600">{realtimeStats.availableDrivers || stats.activeDrivers}</p>
                     </div>
                     <Car className="h-8 w-8 text-blue-600" />
                   </div>
@@ -145,7 +163,7 @@ const AdminDashboard = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-gray-600">Pacientes Ativos</p>
-                      <p className="text-2xl font-bold text-purple-600">{stats.activeUsers}</p>
+                      <p className="text-2xl font-bold text-purple-600">{realtimeStats.totalPatients || stats.activeUsers}</p>
                     </div>
                     <Users className="h-8 w-8 text-purple-600" />
                   </div>
@@ -216,11 +234,11 @@ const AdminDashboard = () => {
                   </button>
                   
                   <button
-                    onClick={() => setActiveTab('analytics')}
+                    onClick={() => setActiveTab('realtime')}
                     className="p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
                   >
-                    <FileText className="h-6 w-6 text-purple-600 mb-2" />
-                    <p className="text-sm font-medium">Ver Relatórios</p>
+                    <Activity className="h-6 w-6 text-purple-600 mb-2" />
+                    <p className="text-sm font-medium">Monitoramento</p>
                   </button>
                 </div>
               </CardContent>
