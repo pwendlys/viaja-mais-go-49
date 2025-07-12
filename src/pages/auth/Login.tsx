@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Shield } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Eye, EyeOff, Car } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,8 +15,8 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
-    email: 'admin@adm.com',
-    password: 'adm@2025'
+    email: '',
+    password: ''
   });
 
   // Redirect if already logged in
@@ -28,11 +28,6 @@ const Login = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (formData.email !== 'admin@adm.com') {
-      toast.error('Acesso restrito apenas para administradores');
-      return;
-    }
     
     if (!formData.email || !formData.password) {
       toast.error('Por favor, preencha todos os campos');
@@ -50,7 +45,7 @@ const Login = () => {
       }
 
       if (data?.user) {
-        toast.success('Login administrativo realizado com sucesso!');
+        toast.success('Login realizado com sucesso!');
         // Navigation will be handled by the useEffect above
       }
     } catch (error) {
@@ -63,38 +58,38 @@ const Login = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-gray-100">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-viaja-blue/10 to-viaja-green/10">
         <div className="text-lg">Carregando...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-gray-100 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-viaja-blue/10 to-viaja-green/10 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
-            <div className="h-12 w-12 bg-blue-600 rounded-full flex items-center justify-center">
-              <Shield className="h-6 w-6 text-white" />
+            <div className="h-12 w-12 bg-gradient-viaja rounded-full flex items-center justify-center">
+              <Car className="h-6 w-6 text-white" />
             </div>
           </div>
-          <CardTitle className="text-2xl text-blue-800">
-            Acesso Administrativo
+          <CardTitle className="text-2xl gradient-viaja bg-clip-text text-transparent">
+            Viaja+
           </CardTitle>
-          <p className="text-gray-600">Login exclusivo para administradores</p>
+          <p className="text-gray-600">Entre com sua conta</p>
         </CardHeader>
         
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email do Administrador</Label>
+              <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 type="email"
+                placeholder="seu@email.com"
                 value={formData.email}
                 onChange={(e) => setFormData({...formData, email: e.target.value})}
-                readOnly
-                className="bg-gray-50"
+                required
               />
             </div>
             
@@ -104,7 +99,7 @@ const Login = () => {
                 <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="Digite a senha administrativa"
+                  placeholder="Sua senha"
                   value={formData.password}
                   onChange={(e) => setFormData({...formData, password: e.target.value})}
                   required
@@ -123,18 +118,27 @@ const Login = () => {
             
             <Button 
               type="submit" 
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+              className="w-full gradient-viaja text-white"
               disabled={isLoading}
             >
-              {isLoading ? 'Entrando...' : 'Entrar como Administrador'}
+              {isLoading ? 'Entrando...' : 'Entrar'}
             </Button>
+            
+            <div className="text-center space-y-2">
+              <Link to="/auth/register" className="text-sm text-viaja-blue hover:underline">
+                Não tem uma conta? Cadastre-se
+              </Link>
+              <br />
+              <Link to="/" className="text-sm text-gray-600 hover:underline">
+                Voltar ao início
+              </Link>
+            </div>
           </form>
 
-          <div className="mt-6 p-3 bg-blue-50 rounded-lg text-xs text-blue-800">
-            <p className="font-semibold mb-1">Credenciais Administrativas:</p>
-            <p>Email: admin@adm.com</p>
-            <p>Senha: adm@2025</p>
-            <p className="mt-2 text-blue-600">Acesso restrito apenas para administradores do sistema.</p>
+          {/* Admin credentials info for development */}
+          <div className="mt-6 p-3 bg-gray-50 rounded-lg text-xs text-gray-600">
+            <p className="font-semibold mb-1">Credenciais para teste:</p>
+            <p>Admin - Email: adm@adm.com | Senha: adm@2025</p>
           </div>
         </CardContent>
       </Card>

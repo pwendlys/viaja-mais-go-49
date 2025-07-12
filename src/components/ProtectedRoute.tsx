@@ -5,9 +5,10 @@ import { useAuth } from '@/hooks/useAuth';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
+  requiredUserType?: 'admin' | 'patient' | 'driver';
 }
 
-const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
+const ProtectedRoute = ({ children, requiredUserType }: ProtectedRouteProps) => {
   const { user, userProfile, loading } = useAuth();
 
   if (loading) {
@@ -18,8 +19,22 @@ const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     );
   }
 
-  if (!user || !userProfile || userProfile.user_type !== 'admin') {
+  if (!user || !userProfile) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (requiredUserType && userProfile.user_type !== requiredUserType) {
+    // Redirect to appropriate dashboard based on user type
+    switch (userProfile.user_type) {
+      case 'admin':
+        return <Navigate to="/admin/dashboard" replace />;
+      case 'patient':
+        return <Navigate to="/user/dashboard" replace />;
+      case 'driver':
+        return <Navigate to="/driver/dashboard" replace />;
+      default:
+        return <Navigate to="/" replace />;
+    }
   }
 
   return <>{children}</>;
