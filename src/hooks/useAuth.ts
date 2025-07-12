@@ -37,8 +37,8 @@ export const useAuth = () => {
             setUserProfile({
               id: profile.id,
               full_name: profile.full_name,
-              email: session.user.email || profile.email,
-              user_type: 'admin',
+              email: session.user.email || 'admin@adm.com',
+              user_type: 'admin' as 'admin',
               admin_role: profile.admin_role || 'admin',
               is_active: profile.is_active
             });
@@ -71,8 +71,8 @@ export const useAuth = () => {
           setUserProfile({
             id: profile.id,
             full_name: profile.full_name,
-            email: session.user.email || profile.email,
-            user_type: 'admin',
+            email: session.user.email || 'admin@adm.com',
+            user_type: 'admin' as 'admin',
             admin_role: profile.admin_role || 'admin',
             is_active: profile.is_active
           });
