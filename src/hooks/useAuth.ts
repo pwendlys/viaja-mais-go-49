@@ -7,7 +7,8 @@ interface UserProfile {
   id: string;
   full_name: string;
   email: string;
-  user_type: 'admin' | 'patient' | 'driver';
+  user_type: 'admin';
+  admin_role: string;
   is_active: boolean;
 }
 
@@ -25,21 +26,26 @@ export const useAuth = () => {
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          // Fetch user profile and include email from auth.users
+          // Fetch user profile for admin only
           const { data: profile } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', session.user.id)
             .single();
           
-          if (profile) {
+          if (profile && profile.user_type === 'admin') {
             setUserProfile({
               id: profile.id,
               full_name: profile.full_name,
-              email: session.user.email || '',
-              user_type: profile.user_type as 'admin' | 'patient' | 'driver',
+              email: session.user.email || profile.email,
+              user_type: 'admin',
+              admin_role: profile.admin_role || 'admin',
               is_active: profile.is_active
             });
+          } else {
+            // Se não é admin, deslogar
+            await supabase.auth.signOut();
+            setUserProfile(null);
           }
         } else {
           setUserProfile(null);
@@ -61,14 +67,19 @@ export const useAuth = () => {
           .eq('id', session.user.id)
           .single();
         
-        if (profile) {
+        if (profile && profile.user_type === 'admin') {
           setUserProfile({
             id: profile.id,
             full_name: profile.full_name,
-            email: session.user.email || '',
-            user_type: profile.user_type as 'admin' | 'patient' | 'driver',
+            email: session.user.email || profile.email,
+            user_type: 'admin',
+            admin_role: profile.admin_role || 'admin',
             is_active: profile.is_active
           });
+        } else {
+          // Se não é admin, deslogar
+          await supabase.auth.signOut();
+          setUserProfile(null);
         }
       }
       
@@ -87,45 +98,15 @@ export const useAuth = () => {
 
       if (error) throw error;
 
-      return { data, error: null };
-    } catch (error) {
-      console.error('Login error:', error);
-      return { data: null, error };
-    }
-  };
-
-  const signUp = async (email: string, password: string, userData: {
-    full_name: string;
-    user_type: 'admin' | 'patient' | 'driver';
-  }) => {
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/`,
-          data: userData
-        }
-      });
-
-      if (error) throw error;
-
-      // Create profile
-      if (data.user) {
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            id: data.user.id,
-            full_name: userData.full_name,
-            user_type: userData.user_type
-          });
-
-        if (profileError) throw profileError;
+      // Verificar se é o admin após login
+      if (data.user && email !== 'admin@adm.com') {
+        await supabase.auth.signOut();
+        throw new Error('Acesso negado. Apenas administradores podem fazer login.');
       }
 
       return { data, error: null };
     } catch (error) {
-      console.error('Signup error:', error);
+      console.error('Login error:', error);
       return { data: null, error };
     }
   };
@@ -144,18 +125,7 @@ export const useAuth = () => {
   };
 
   const getRedirectPath = () => {
-    if (!userProfile) return '/';
-    
-    switch (userProfile.user_type) {
-      case 'admin':
-        return '/admin/dashboard';
-      case 'patient':
-        return '/user/dashboard';
-      case 'driver':
-        return '/driver/dashboard';
-      default:
-        return '/';
-    }
+    return '/admin/dashboard';
   };
 
   return {
@@ -164,11 +134,8 @@ export const useAuth = () => {
     userProfile,
     loading,
     signIn,
-    signUp,
     signOut,
     getRedirectPath,
-    isAdmin: userProfile?.user_type === 'admin',
-    isPatient: userProfile?.user_type === 'patient',
-    isDriver: userProfile?.user_type === 'driver'
+    isAdmin: userProfile?.user_type === 'admin'
   };
 };

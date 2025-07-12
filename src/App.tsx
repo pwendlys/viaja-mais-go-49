@@ -2,13 +2,11 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { navItems } from "./nav-items";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import AdminAccessButton from "./components/admin/AdminAccessButton";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import PaymentManagement from "./pages/admin/PaymentManagement";
 import Login from "./pages/auth/Login";
-import Register from "./pages/auth/Register";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -20,15 +18,17 @@ const App = () => (
       <BrowserRouter>
         <AdminAccessButton />
         <Routes>
-          {navItems.map(({ to, page }) => (
-            <Route key={to} path={to} element={page} />
-          ))}
+          {/* Redirecionar raiz para login */}
+          <Route path="/" element={<Navigate to="/login" replace />} />
+          
+          {/* Login administrativo */}
           <Route path="/login" element={<Login />} />
-          <Route path="/auth/register" element={<Register />} />
+          
+          {/* Rotas administrativas protegidas */}
           <Route 
             path="/admin/dashboard" 
             element={
-              <ProtectedRoute requiredUserType="admin">
+              <ProtectedRoute>
                 <AdminDashboard />
               </ProtectedRoute>
             } 
@@ -36,11 +36,14 @@ const App = () => (
           <Route 
             path="/admin/payments" 
             element={
-              <ProtectedRoute requiredUserType="admin">
+              <ProtectedRoute>
                 <PaymentManagement />
               </ProtectedRoute>
             } 
           />
+          
+          {/* Redirecionar qualquer outra rota para login */}
+          <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </BrowserRouter>
     </TooltipProvider>
