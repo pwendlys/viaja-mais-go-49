@@ -4,30 +4,19 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 interface AnalyticsStats {
-  totalRevenue: number;
-  totalRides: number;
+  totalUsers: number;
+  totalPatients: number;
+  totalDrivers: number;
   activeUsers: number;
-  activeDrivers: number;
-  avgRating: number;
-  completionRate: number;
+  patientsWithDependency: number;
+  driversCount: number;
 }
 
 interface DailyStats {
   date: string;
-  rides: number;
-  revenue: number;
-  users: number;
-}
-
-interface RidesByHour {
-  hour: string;
-  rides: number;
-}
-
-interface TopRoute {
-  route: string;
-  rides: number;
-  revenue: number;
+  newUsers: number;
+  newPatients: number;
+  newDrivers: number;
 }
 
 interface UserTypeStats {
@@ -38,16 +27,14 @@ interface UserTypeStats {
 
 export const useAnalyticsData = () => {
   const [stats, setStats] = useState<AnalyticsStats>({
-    totalRevenue: 0,
-    totalRides: 0,
+    totalUsers: 0,
+    totalPatients: 0,
+    totalDrivers: 0,
     activeUsers: 0,
-    activeDrivers: 0,
-    avgRating: 0,
-    completionRate: 0
+    patientsWithDependency: 0,
+    driversCount: 0
   });
   const [dailyStats, setDailyStats] = useState<DailyStats[]>([]);
-  const [ridesByHour, setRidesByHour] = useState<RidesByHour[]>([]);
-  const [topRoutes, setTopRoutes] = useState<TopRoute[]>([]);
   const [userTypes, setUserTypes] = useState<UserTypeStats[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -56,37 +43,31 @@ export const useAnalyticsData = () => {
       setIsLoading(true);
 
       // Buscar estatísticas gerais
-      const [ridesResult, usersResult, driversResult] = await Promise.all([
-        supabase.from('rides').select('*'),
-        supabase.from('profiles').select('*').eq('user_type', 'patient'),
-        supabase.from('profiles').select('*').eq('user_type', 'driver')
+      const [profilesResult, patientsResult, driversResult] = await Promise.all([
+        supabase.from('profiles').select('*'),
+        supabase.from('patients').select('*'),
+        supabase.from('drivers').select('*')
       ]);
 
-      if (ridesResult.error) throw ridesResult.error;
-      if (usersResult.error) throw usersResult.error;
+      if (profilesResult.error) throw profilesResult.error;
+      if (patientsResult.error) throw patientsResult.error;
       if (driversResult.error) throw driversResult.error;
 
-      const rides = ridesResult.data || [];
-      const users = usersResult.data || [];
+      const profiles = profilesResult.data || [];
+      const patients = patientsResult.data || [];
       const drivers = driversResult.data || [];
 
       // Calcular estatísticas
-      const completedRides = rides.filter(r => r.status === 'completed');
-      const totalRevenue = completedRides.reduce((sum, ride) => sum + (ride.price || 0), 0);
-      const avgRating = completedRides.length > 0 
-        ? completedRides.reduce((sum, ride) => sum + (ride.driver_rating || 5), 0) / completedRides.length 
-        : 0;
-      const completionRate = rides.length > 0 
-        ? (completedRides.length / rides.length) * 100 
-        : 0;
+      const patientsWithDependency = patients.filter(p => p.has_dependency).length;
+      const activeUsers = profiles.filter(p => p.is_active).length;
 
       setStats({
-        totalRevenue,
-        totalRides: rides.length,
-        activeUsers: users.filter(u => u.is_active).length,
-        activeDrivers: drivers.filter(d => d.is_active).length,
-        avgRating: Number(avgRating.toFixed(1)),
-        completionRate: Number(completionRate.toFixed(1))
+        totalUsers: profiles.length,
+        totalPatients: patients.length,
+        totalDrivers: drivers.length,
+        activeUsers,
+        patientsWithDependency,
+        driversCount: drivers.length
       });
 
       // Processar dados diários (últimos 7 dias)
@@ -97,86 +78,37 @@ export const useAnalyticsData = () => {
       }).reverse();
 
       const dailyData = last7Days.map(date => {
-        const dayRides = rides.filter(ride => 
-          ride.created_at && ride.created_at.startsWith(date)
+        const dayProfiles = profiles.filter(profile => 
+          profile.created_at && profile.created_at.startsWith(date)
         );
-        const dayRevenue = dayRides
-          .filter(r => r.status === 'completed')
-          .reduce((sum, ride) => sum + (ride.price || 0), 0);
+        const dayPatients = patients.filter(patient => {
+          const patientProfile = profiles.find(p => p.id === patient.id);
+          return patientProfile?.created_at && patientProfile.created_at.startsWith(date);
+        });
+        const dayDrivers = drivers.filter(driver => {
+          const driverProfile = profiles.find(p => p.id === driver.id);
+          return driverProfile?.created_at && driverProfile.created_at.startsWith(date);
+        });
         
         return {
           date: new Date(date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
-          rides: dayRides.length,
-          revenue: dayRevenue,
-          users: dayRides.filter((ride, index, arr) => 
-            arr.findIndex(r => r.patient_id === ride.patient_id) === index
-          ).length
+          newUsers: dayProfiles.length,
+          newPatients: dayPatients.length,
+          newDrivers: dayDrivers.length
         };
       });
 
       setDailyStats(dailyData);
 
-      // Processar corridas por horário
-      const hourlyData = Array.from({ length: 24 }, (_, hour) => {
-        const hourRides = rides.filter(ride => {
-          if (!ride.created_at) return false;
-          const rideHour = new Date(ride.created_at).getHours();
-          return rideHour === hour;
-        });
-        
-        return {
-          hour: `${hour.toString().padStart(2, '0')}h`,
-          rides: hourRides.length
-        };
-      }).filter(data => data.rides > 0);
-
-      setRidesByHour(hourlyData);
-
-      // Processar rotas mais populares
-      const routeMap = new Map<string, { rides: number; revenue: number }>();
-      
-      rides.forEach(ride => {
-        const route = `${ride.origin_address?.split(',')[0] || 'Origem'} → ${ride.destination_address?.split(',')[0] || 'Destino'}`;
-        const existing = routeMap.get(route) || { rides: 0, revenue: 0 };
-        routeMap.set(route, {
-          rides: existing.rides + 1,
-          revenue: existing.revenue + (ride.status === 'completed' ? (ride.price || 0) : 0)
-        });
-      });
-
-      const topRoutesData = Array.from(routeMap.entries())
-        .map(([route, data]) => ({ route, ...data }))
-        .sort((a, b) => b.rides - a.rides)
-        .slice(0, 5);
-
-      setTopRoutes(topRoutesData);
-
       // Processar tipos de usuários
-      const patientProfiles = await supabase
-        .from('patients')
-        .select('preferred_vehicle_type')
-        .in('id', users.map(u => u.id));
-
-      const vehicleTypeCount = {
-        tradicional: 0,
-        acessivel: 0,
-        indefinido: 0
-      };
-
-      patientProfiles.data?.forEach(patient => {
-        if (patient.preferred_vehicle_type === 'tradicional') {
-          vehicleTypeCount.tradicional++;
-        } else if (patient.preferred_vehicle_type === 'acessivel') {
-          vehicleTypeCount.acessivel++;
-        } else {
-          vehicleTypeCount.indefinido++;
-        }
-      });
+      const patientCount = profiles.filter(p => p.user_type === 'patient').length;
+      const driverCount = profiles.filter(p => p.user_type === 'driver').length;
+      const adminCount = profiles.filter(p => p.user_type === 'admin').length;
 
       setUserTypes([
-        { name: 'Preferem Tradicional', value: vehicleTypeCount.tradicional, color: '#3b82f6' },
-        { name: 'Preferem Acessível', value: vehicleTypeCount.acessivel, color: '#10b981' },
-        { name: 'Sem Preferência', value: vehicleTypeCount.indefinido, color: '#f59e0b' }
+        { name: 'Pacientes', value: patientCount, color: '#3b82f6' },
+        { name: 'Motoristas', value: driverCount, color: '#10b981' },
+        { name: 'Administradores', value: adminCount, color: '#f59e0b' }
       ]);
 
     } catch (error) {
@@ -194,8 +126,8 @@ export const useAnalyticsData = () => {
   return {
     stats,
     dailyStats,
-    ridesByHour,
-    topRoutes,
+    ridesByHour: [], // Vazio pois não temos tabela de rides ainda
+    topRoutes: [], // Vazio pois não temos tabela de rides ainda
     userTypes,
     isLoading,
     refetchAnalytics: fetchAnalyticsData

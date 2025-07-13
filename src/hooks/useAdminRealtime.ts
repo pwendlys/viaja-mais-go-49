@@ -6,18 +6,16 @@ import { toast } from 'sonner';
 interface RealtimeStats {
   totalPatients: number;
   totalDrivers: number;
-  totalRides: number;
-  activeRides: number;
-  availableDrivers: number;
+  totalProfiles: number;
+  activeProfiles: number;
 }
 
 export const useAdminRealtime = (isAdmin: boolean) => {
   const [stats, setStats] = useState<RealtimeStats>({
     totalPatients: 0,
     totalDrivers: 0,
-    totalRides: 0,
-    activeRides: 0,
-    availableDrivers: 0
+    totalProfiles: 0,
+    activeProfiles: 0
   });
   const [isConnected, setIsConnected] = useState(false);
 
@@ -29,20 +27,18 @@ export const useAdminRealtime = (isAdmin: boolean) => {
     // Função para buscar estatísticas atualizadas
     const fetchStats = async () => {
       try {
-        const [patientsCount, driversCount, ridesCount, activeRidesCount, availableDriversCount] = await Promise.all([
+        const [patientsCount, driversCount, profilesCount, activeProfilesCount] = await Promise.all([
           supabase.from('patients').select('*', { count: 'exact', head: true }),
           supabase.from('drivers').select('*', { count: 'exact', head: true }),
-          supabase.from('rides').select('*', { count: 'exact', head: true }),
-          supabase.from('rides').select('*', { count: 'exact', head: true }).in('status', ['requested', 'assigned', 'in-progress']),
-          supabase.from('drivers').select('*', { count: 'exact', head: true }).eq('is_available', true)
+          supabase.from('profiles').select('*', { count: 'exact', head: true }),
+          supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('is_active', true)
         ]);
 
         setStats({
           totalPatients: patientsCount.count || 0,
           totalDrivers: driversCount.count || 0,
-          totalRides: ridesCount.count || 0,
-          activeRides: activeRidesCount.count || 0,
-          availableDrivers: availableDriversCount.count || 0
+          totalProfiles: profilesCount.count || 0,
+          activeProfiles: activeProfilesCount.count || 0
         });
       } catch (error) {
         console.error('Error fetching admin stats:', error);
@@ -79,18 +75,6 @@ export const useAdminRealtime = (isAdmin: boolean) => {
         }),
 
       supabase
-        .channel('admin-rides')
-        .on('postgres_changes', {
-          event: '*',
-          schema: 'public',
-          table: 'rides'
-        }, (payload) => {
-          console.log('Rides change:', payload);
-          fetchStats();
-          toast.info('Atualização: Nova atividade de corridas');
-        }),
-
-      supabase
         .channel('admin-profiles')
         .on('postgres_changes', {
           event: '*',
@@ -98,18 +82,8 @@ export const useAdminRealtime = (isAdmin: boolean) => {
           table: 'profiles'
         }, (payload) => {
           console.log('Profiles change:', payload);
+          fetchStats();
           toast.info('Atualização: Novos usuários');
-        }),
-
-      supabase
-        .channel('admin-payments')
-        .on('postgres_changes', {
-          event: '*',
-          schema: 'public',
-          table: 'driver_payments'
-        }, (payload) => {
-          console.log('Driver payments change:', payload);
-          toast.info('Atualização: Novos pagamentos');
         })
     ];
 
@@ -138,20 +112,18 @@ export const useAdminRealtime = (isAdmin: boolean) => {
     refreshStats: async () => {
       // Função para atualizar manualmente as estatísticas
       try {
-        const [patientsCount, driversCount, ridesCount, activeRidesCount, availableDriversCount] = await Promise.all([
+        const [patientsCount, driversCount, profilesCount, activeProfilesCount] = await Promise.all([
           supabase.from('patients').select('*', { count: 'exact', head: true }),
           supabase.from('drivers').select('*', { count: 'exact', head: true }),
-          supabase.from('rides').select('*', { count: 'exact', head: true }),
-          supabase.from('rides').select('*', { count: 'exact', head: true }).in('status', ['requested', 'assigned', 'in-progress']),
-          supabase.from('drivers').select('*', { count: 'exact', head: true }).eq('is_available', true)
+          supabase.from('profiles').select('*', { count: 'exact', head: true }),
+          supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('is_active', true)
         ]);
 
         setStats({
           totalPatients: patientsCount.count || 0,
           totalDrivers: driversCount.count || 0,
-          totalRides: ridesCount.count || 0,
-          activeRides: activeRidesCount.count || 0,
-          availableDrivers: availableDriversCount.count || 0
+          totalProfiles: profilesCount.count || 0,
+          activeProfiles: activeProfilesCount.count || 0
         });
         
         toast.success('Estatísticas atualizadas!');

@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { useFileUpload } from '@/hooks/useFileUpload';
+import { supabase } from '@/integrations/supabase/client';
 import { Upload, User } from 'lucide-react';
 
 const PatientRegisterForm = () => {
