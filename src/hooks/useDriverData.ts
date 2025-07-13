@@ -42,7 +42,7 @@ export const useDriverData = () => {
     totalRides: 0,
     todayEarnings: 0,
     todayRides: 0,
-    rating: 0
+    rating: 5.0
   });
   const [recentRides, setRecentRides] = useState<RecentRide[]>([]);
   const [loading, setLoading] = useState(true);
@@ -87,106 +87,28 @@ export const useDriverData = () => {
             year: driverData.vehicle_year,
             color: driverData.vehicle_color
           },
-          rating: driverData.rating || 5.0,
-          totalRides: driverData.total_rides || 0,
-          isAvailable: driverData.is_available || false
+          rating: 5.0, // Default rating since it's not in the current schema
+          totalRides: 0, // Default since it's not in the current schema
+          isAvailable: false // Default since it's not in the current schema
         });
       }
 
-      // Buscar estatísticas e corridas recentes
-      await Promise.all([
-        fetchDriverStats(user.id),
-        fetchRecentRides(user.id)
-      ]);
+      // Set default stats since we don't have a rides table yet
+      setStats({
+        totalRides: 0,
+        todayEarnings: 0,
+        todayRides: 0,
+        rating: 5.0
+      });
+
+      // Set empty recent rides since we don't have a rides table yet
+      setRecentRides([]);
 
     } catch (error) {
       console.error('Erro ao buscar dados do motorista:', error);
       toast.error('Erro ao carregar dados do motorista');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchDriverStats = async (driverId: string) => {
-    try {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      const { data: rides } = await supabase
-        .from('rides')
-        .select('price, completed_at, status')
-        .eq('driver_id', driverId)
-        .eq('status', 'completed');
-
-      if (rides) {
-        const todayRides = rides.filter(ride => 
-          new Date(ride.completed_at) >= today
-        );
-
-        const todayEarnings = todayRides.reduce((sum, ride) => 
-          sum + (ride.price || 0), 0
-        );
-
-        // Calcular avaliação média
-        const { data: ratingsData } = await supabase
-          .from('rides')
-          .select('patient_rating')
-          .eq('driver_id', driverId)
-          .not('patient_rating', 'is', null);
-
-        let avgRating = 5.0;
-        if (ratingsData && ratingsData.length > 0) {
-          const totalRating = ratingsData.reduce((sum, ride) => 
-            sum + (ride.patient_rating || 0), 0
-          );
-          avgRating = totalRating / ratingsData.length;
-        }
-
-        setStats({
-          totalRides: rides.length,
-          todayEarnings,
-          todayRides: todayRides.length,
-          rating: avgRating
-        });
-      }
-    } catch (error) {
-      console.error('Erro ao buscar estatísticas:', error);
-    }
-  };
-
-  const fetchRecentRides = async (driverId: string) => {
-    try {
-      const { data: rides } = await supabase
-        .from('rides')
-        .select(`
-          id,
-          origin_address,
-          destination_address,
-          completed_at,
-          price,
-          patient_rating,
-          profiles!rides_patient_id_fkey (full_name)
-        `)
-        .eq('driver_id', driverId)
-        .eq('status', 'completed')
-        .order('completed_at', { ascending: false })
-        .limit(10);
-
-      if (rides) {
-        const formattedRides: RecentRide[] = rides.map(ride => ({
-          id: ride.id,
-          patientName: (ride.profiles as any)?.full_name || 'Paciente',
-          originAddress: ride.origin_address,
-          destinationAddress: ride.destination_address,
-          completedAt: ride.completed_at,
-          price: ride.price || 0,
-          patientRating: ride.patient_rating
-        }));
-
-        setRecentRides(formattedRides);
-      }
-    } catch (error) {
-      console.error('Erro ao buscar corridas recentes:', error);
     }
   };
 
@@ -204,26 +126,14 @@ export const useDriverData = () => {
         navigator.geolocation.getCurrentPosition(
           async (position) => {
             try {
-              const { latitude, longitude } = position.coords;
-              
-              // Atualizar localização e status no banco diretamente
-              const { error: locationError } = await supabase
-                .from('drivers')
-                .update({
-                  current_lat: latitude,
-                  current_lng: longitude,
-                  is_available: true
-                })
-                .eq('id', driverInfo.id);
-
-              if (locationError) {
-                console.error('Erro ao atualizar localização:', locationError);
-                toast.error('Erro ao atualizar localização');
-                return;
-              }
-              
+              // For now, just update the local state since we don't have location fields in the database
               setDriverInfo(prev => prev ? { ...prev, isAvailable: true } : null);
               toast.success('Você está online! Aguardando solicitações...');
+              
+              console.log('Location obtained:', {
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude
+              });
             } catch (error) {
               console.error('Erro ao atualizar status:', error);
               toast.error('Erro ao ficar online');
@@ -254,18 +164,7 @@ export const useDriverData = () => {
           }
         );
       } else {
-        // Ficar offline
-        const { error } = await supabase
-          .from('drivers')
-          .update({ is_available: false })
-          .eq('id', driverInfo.id);
-
-        if (error) {
-          console.error('Erro ao ficar offline:', error);
-          toast.error('Erro ao alterar status');
-          return;
-        }
-
+        // Ficar offline - just update local state for now
         setDriverInfo(prev => prev ? { ...prev, isAvailable: false } : null);
         toast.info('Você está offline');
       }
@@ -275,45 +174,9 @@ export const useDriverData = () => {
     }
   };
 
-  const updateLocationPeriodically = () => {
-    if (!driverInfo?.isAvailable) return;
-
-    const interval = setInterval(() => {
-      if (navigator.geolocation && driverInfo?.isAvailable) {
-        navigator.geolocation.getCurrentPosition(
-          async (position) => {
-            try {
-              const { latitude, longitude } = position.coords;
-              await supabase
-                .from('drivers')
-                .update({
-                  current_lat: latitude,
-                  current_lng: longitude
-                })
-                .eq('id', driverInfo.id);
-            } catch (error) {
-              console.error('Erro ao atualizar localização periódica:', error);
-            }
-          },
-          (error) => {
-            console.error('Erro ao obter localização periódica:', error);
-          },
-          { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }
-        );
-      }
-    }, 30000); // Atualizar a cada 30 segundos
-
-    return () => clearInterval(interval);
-  };
-
   useEffect(() => {
     fetchDriverData();
   }, []);
-
-  useEffect(() => {
-    const cleanup = updateLocationPeriodically();
-    return cleanup;
-  }, [driverInfo?.isAvailable]);
 
   return {
     driverInfo,
