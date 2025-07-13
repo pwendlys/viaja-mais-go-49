@@ -14,7 +14,121 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      drivers: {
+        Row: {
+          cnh_back_photo: string | null
+          cnh_front_photo: string | null
+          cnh_number: string
+          id: string
+          vehicle_color: string
+          vehicle_document: string | null
+          vehicle_make: string
+          vehicle_model: string
+          vehicle_plate: string
+          vehicle_year: number
+        }
+        Insert: {
+          cnh_back_photo?: string | null
+          cnh_front_photo?: string | null
+          cnh_number: string
+          id: string
+          vehicle_color: string
+          vehicle_document?: string | null
+          vehicle_make: string
+          vehicle_model: string
+          vehicle_plate: string
+          vehicle_year: number
+        }
+        Update: {
+          cnh_back_photo?: string | null
+          cnh_front_photo?: string | null
+          cnh_number?: string
+          id?: string
+          vehicle_color?: string
+          vehicle_document?: string | null
+          vehicle_make?: string
+          vehicle_model?: string
+          vehicle_plate?: string
+          vehicle_year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drivers_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      patients: {
+        Row: {
+          dependency_description: string | null
+          has_dependency: boolean | null
+          id: string
+          sus_card: string
+        }
+        Insert: {
+          dependency_description?: string | null
+          has_dependency?: boolean | null
+          id: string
+          sus_card: string
+        }
+        Update: {
+          dependency_description?: string | null
+          has_dependency?: boolean | null
+          id?: string
+          sus_card?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patients_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          cpf: string
+          created_at: string | null
+          email: string
+          full_name: string
+          id: string
+          is_active: boolean | null
+          phone: string
+          profile_photo: string | null
+          updated_at: string | null
+          user_type: string
+        }
+        Insert: {
+          cpf: string
+          created_at?: string | null
+          email: string
+          full_name: string
+          id: string
+          is_active?: boolean | null
+          phone: string
+          profile_photo?: string | null
+          updated_at?: string | null
+          user_type: string
+        }
+        Update: {
+          cpf?: string
+          created_at?: string | null
+          email?: string
+          full_name?: string
+          id?: string
+          is_active?: boolean | null
+          phone?: string
+          profile_photo?: string | null
+          updated_at?: string | null
+          user_type?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

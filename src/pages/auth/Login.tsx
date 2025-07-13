@@ -125,9 +125,14 @@ const Login = () => {
             </Button>
             
             <div className="text-center space-y-2">
-              <Link to="/auth/register" className="text-sm text-viaja-blue hover:underline">
-                Não tem uma conta? Cadastre-se
-              </Link>
+              <div className="flex justify-center space-x-4">
+                <Link to="/auth/register/patient" className="text-sm text-viaja-blue hover:underline">
+                  Cadastro Paciente
+                </Link>
+                <Link to="/auth/register/driver" className="text-sm text-viaja-blue hover:underline">
+                  Cadastro Motorista
+                </Link>
+              </div>
               <br />
               <Link to="/" className="text-sm text-gray-600 hover:underline">
                 Voltar ao início

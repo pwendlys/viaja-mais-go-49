@@ -110,19 +110,6 @@ export const useAuth = () => {
 
       if (error) throw error;
 
-      // Create profile
-      if (data.user) {
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            id: data.user.id,
-            full_name: userData.full_name,
-            user_type: userData.user_type
-          });
-
-        if (profileError) throw profileError;
-      }
-
       return { data, error: null };
     } catch (error) {
       console.error('Signup error:', error);

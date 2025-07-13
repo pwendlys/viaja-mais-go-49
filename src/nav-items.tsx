@@ -2,7 +2,8 @@
 import { HomeIcon, Car, Users, Settings, BarChart3, User, History, CreditCard, MapPin, LogIn, UserPlus } from "lucide-react";
 import Index from "./pages/Index";
 import Login from "./pages/auth/Login";
-import Register from "./pages/auth/Register";
+import PatientRegister from "./pages/auth/PatientRegister";
+import DriverRegister from "./pages/auth/DriverRegister";
 import UserDashboard from "./pages/user/UserDashboard";
 import DriverDashboard from "./pages/driver/DriverDashboard";
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -28,10 +29,16 @@ export const navItems = [
     page: <Login />,
   },
   {
-    title: "Cadastro",
-    to: "/register",
+    title: "Cadastro Paciente",
+    to: "/auth/register/patient",
     icon: <UserPlus className="h-4 w-4" />,
-    page: <Register />,
+    page: <PatientRegister />,
+  },
+  {
+    title: "Cadastro Motorista",
+    to: "/auth/register/driver",
+    icon: <Car className="h-4 w-4" />,
+    page: <DriverRegister />,
   },
   {
     title: "Dashboard do Usuário",
