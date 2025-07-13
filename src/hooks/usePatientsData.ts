@@ -1,4 +1,5 @@
 
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -37,15 +38,7 @@ export const usePatientsData = () => {
           full_name,
           phone,
           is_active,
-          created_at,
-          patients (
-            address,
-            sus_number,
-            medical_condition,
-            mobility_needs,
-            emergency_contact_name,
-            emergency_contact_phone
-          )
+          created_at
         `)
         .eq('user_type', 'patient');
 
@@ -56,66 +49,42 @@ export const usePatientsData = () => {
 
       console.log('Profiles encontrados:', profilesData?.length || 0);
 
-      // Buscar aprovações de usuários
-      const { data: approvalsData, error: approvalsError } = await supabase
-        .from('user_approvals')
-        .select('user_id, status')
-        .eq('user_type', 'patient');
+      // Get patient details for each profile
+      const patientIds = profilesData?.map(profile => profile.id) || [];
+      let patientDetails: any[] = [];
+      
+      if (patientIds.length > 0) {
+        const { data: patientsData, error: patientsError } = await supabase
+          .from('patients')
+          .select('*')
+          .in('id', patientIds);
 
-      if (approvalsError) {
-        console.error('Erro ao buscar aprovações:', approvalsError);
-      }
-
-      // Buscar estatísticas de corridas para cada paciente
-      const { data: ridesData, error: ridesError } = await supabase
-        .from('rides')
-        .select('patient_id, patient_rating')
-        .not('patient_rating', 'is', null);
-
-      if (ridesError) {
-        console.error('Erro ao buscar corridas:', ridesError);
-      }
-
-      // Criar mapa de aprovações
-      const approvalsMap = (approvalsData || []).reduce((acc, approval) => {
-        acc[approval.user_id] = approval.status;
-        return acc;
-      }, {} as Record<string, string>);
-
-      // Criar mapa de estatísticas de corridas
-      const ridesStatsMap = (ridesData || []).reduce((acc, ride) => {
-        if (!acc[ride.patient_id]) {
-          acc[ride.patient_id] = { totalRides: 0, totalRating: 0, ratingCount: 0 };
+        if (patientsError) {
+          console.error('Error fetching patient details:', patientsError);
+        } else {
+          patientDetails = patientsData || [];
         }
-        acc[ride.patient_id].totalRides += 1;
-        if (ride.patient_rating) {
-          acc[ride.patient_id].totalRating += ride.patient_rating;
-          acc[ride.patient_id].ratingCount += 1;
-        }
-        return acc;
-      }, {} as Record<string, { totalRides: number; totalRating: number; ratingCount: number }>);
+      }
 
       const formattedPatients = (profilesData || []).map(profile => {
-        const rideStats = ridesStatsMap[profile.id] || { totalRides: 0, totalRating: 0, ratingCount: 0 };
-        const averageRating = rideStats.ratingCount > 0 ? rideStats.totalRating / rideStats.ratingCount : 0;
+        const patientDetail = patientDetails.find(p => p.id === profile.id);
 
         return {
           id: profile.id,
           name: profile.full_name || 'Nome não informado',
           email: '', // Email não está disponível via profiles por segurança
           phone: profile.phone || '',
-          address: (profile.patients as any)?.[0]?.address || 'Não informado',
-          susNumber: (profile.patients as any)?.[0]?.sus_number || 'Não informado',
-          medicalCondition: (profile.patients as any)?.[0]?.medical_condition || 'Não informado',
-          mobilityNeeds: (profile.patients as any)?.[0]?.mobility_needs || 'Não informado',
+          address: 'Não informado', // We don't have address in current schema
+          susNumber: patientDetail?.sus_card || 'Não informado',
+          medicalCondition: 'Não informado', // Not in current schema
+          mobilityNeeds: 'Não informado', // Not in current schema
           status: profile.is_active ? 'Ativo' : 'Inativo',
           joinDate: profile.created_at || '',
-          documentsStatus: approvalsMap[profile.id] === 'approved' ? 'Aprovado' : 
-                          approvalsMap[profile.id] === 'rejected' ? 'Rejeitado' : 'Pendente',
-          emergencyContactName: (profile.patients as any)?.[0]?.emergency_contact_name || '',
-          emergencyContactPhone: (profile.patients as any)?.[0]?.emergency_contact_phone || '',
-          rating: averageRating,
-          totalRides: rideStats.totalRides
+          documentsStatus: 'Pendente', // Default status
+          emergencyContactName: '',
+          emergencyContactPhone: '',
+          rating: 0, // Default value
+          totalRides: 0 // Default value
         };
       });
 
@@ -140,18 +109,6 @@ export const usePatientsData = () => {
 
       if (error) throw error;
 
-      // Atualizar também o status de aprovação se necessário
-      if (newStatus === 'Ativo') {
-        await supabase
-          .from('user_approvals')
-          .upsert({
-            user_id: patientId,
-            user_type: 'patient',
-            status: 'approved',
-            reviewed_at: new Date().toISOString()
-          });
-      }
-
       await fetchPatients();
       toast.success(`Status do paciente alterado para ${newStatus}`);
     } catch (error) {
@@ -162,19 +119,7 @@ export const usePatientsData = () => {
 
   const approveDocuments = async (patientId: string, approved: boolean, rejectionReason?: string) => {
     try {
-      const { error } = await supabase
-        .from('user_approvals')
-        .upsert({
-          user_id: patientId,
-          user_type: 'patient',
-          status: approved ? 'approved' : 'rejected',
-          reviewed_at: new Date().toISOString(),
-          rejection_reason: approved ? null : rejectionReason
-        });
-
-      if (error) throw error;
-
-      // Se aprovado, ativar o paciente
+      // Since we don't have user_approvals table, we'll just activate the patient
       if (approved) {
         await supabase
           .from('profiles')
@@ -202,3 +147,4 @@ export const usePatientsData = () => {
     refetchPatients: fetchPatients
   };
 };
+
